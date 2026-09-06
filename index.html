@@ -321,13 +321,6 @@ pre{
 
   <h2 class="sec">Troubleshooting</h2>
   <div id="lastErr" style="display:none"></div>
-  <div class="hint" style="margin-bottom:8px">Multi-stage layout &mdash; temporary, while we work out which one the oven accepts. Single-stage recipes are unaffected.</div>
-  <div class="seg" id="planSeg">
-    <button data-p="each" aria-pressed="true">Preheat each</button>
-    <button data-p="one" aria-pressed="false">One preheat</button>
-    <button data-p="none" aria-pressed="false">No preheat</button>
-  </div>
-  <div class="hint" style="margin-bottom:14px">&ldquo;Preheat each&rdquo; matches Anova&rsquo;s own apps and is the default.</div>
   <button class="btn slim" id="btnRaw">Show raw oven data</button>
   <div class="hint">Useful if a reading looks wrong &mdash; send me this and I can correct the app.</div>
 </section>
@@ -378,12 +371,7 @@ const store = {
   get recipes(){ try { return JSON.parse(localStorage.getItem('anova.recipes')||'[]'); } catch { return []; } },
   set recipes(v){ localStorage.setItem('anova.recipes', JSON.stringify(v)); },
   get wake(){ return localStorage.getItem('anova.wake') !== '0'; },   // on unless turned off
-  set wake(v){ localStorage.setItem('anova.wake', v ? '1' : '0'); },
-  // TEMPORARY. Multi-stage cooks are silently refused and the oven gives no
-  // reason, so the stage layout is switchable while we find out which one it
-  // accepts. Collapse this back to a constant once that is known.
-  get plan(){ return localStorage.getItem('anova.plan') || 'each'; },
-  set plan(v){ localStorage.setItem('anova.plan', v); }
+  set wake(v){ localStorage.setItem('anova.wake', v ? '1' : '0'); }
 };
 
 /* ---------- oven limits (v1) ---------- */
@@ -1079,14 +1067,10 @@ function runRecipe(r){
   const errs = validate(r);
   if (errs.length){ fail('Not sent — ' + errs.join('  ')); return; }
 
-  // 'one'  - a single leading preheat, then plain cook stages
-  // 'each' - a preheat before every stage (the original behaviour, refused)
-  // 'none' - no preheat stages at all
-  const plan = store.plan;
+  // A preheat before every stage, paired to it by id. This is what the oven's
+  // own app does; the layout was never the problem and is no longer a choice.
   const stages = [];
-  r.stages.forEach((s, i) => stages.push(
-    ...stagePair(s, i === r.stages.length - 1, plan === 'each' || (plan === 'one' && i === 0))
-  ));
+  r.stages.forEach((s, i) => stages.push(...stagePair(s, i === r.stages.length - 1, true)));
   const reqId = uuid(), cookId = cookUuid();
 
   const ok = send({
@@ -1335,12 +1319,7 @@ $('#btnRaw').onclick = () => {
 };
 document.querySelectorAll('#unitSeg button').forEach(b => b.onclick = () => setUnit(b.dataset.u));
 document.querySelectorAll('#wakeSeg button').forEach(b => b.onclick = () => setWake(b.dataset.w === '1'));
-document.querySelectorAll('#planSeg button').forEach(b => b.onclick = () => {
-  store.plan = b.dataset.p;
-  document.querySelectorAll('#planSeg button').forEach(x =>
-    x.setAttribute('aria-pressed', String(x.dataset.p === store.plan)));
-  toast('Stage layout: ' + b.textContent);
-});
+
 
 /* ---------- helpers ---------- */
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -1369,8 +1348,9 @@ document.querySelectorAll('#unitSeg button').forEach(b =>
   b.setAttribute('aria-pressed', String(b.dataset.u === store.unit)));
 document.querySelectorAll('#wakeSeg button').forEach(b =>
   b.setAttribute('aria-pressed', String((b.dataset.w === '1') === store.wake)));
-document.querySelectorAll('#planSeg button').forEach(b =>
-  b.setAttribute('aria-pressed', String(b.dataset.p === store.plan)));
+// The experimental layout picker is gone; drop any choice left on the phone so
+// a stale preference cannot outlive it.
+try { localStorage.removeItem('anova.plan'); } catch {}
 if (!wakeSupported()){
   document.querySelectorAll('#wakeSeg button').forEach(b => b.disabled = true);
   $('#wakeHint').textContent = 'This browser cannot hold the screen on. Install the app to your home screen, or set the screen timeout in Android settings.';

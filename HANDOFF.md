@@ -360,20 +360,17 @@ exercised in a browser.**
    is unchanged for the default - but the control is now inert and should either
    be removed or reimplemented once the multi-stage path is confirmed working.
 
-   **Superseded: `store.plan` selects the stage layout**, switchable under
-   Setup -> Troubleshooting, because the oven gives no reason and each guess
-   otherwise costs a deploy plus a trip to the kitchen:
+   **REMOVED: the `store.plan` layout selector.** It briefly let the owner switch
+   between preheat layouts from Setup. It also created a trap that cost a full
+   test cycle: the owner had selected "No preheat" while testing, that choice
+   persisted in `localStorage`, and a stored value beats a changed default - so
+   a later fix to the preheat pairing never ran on his phone at all. The layout
+   is now a constant (preheat before every stage), the selector is gone, and boot
+   deletes any `anova.plan` left behind.
 
-   | value | layout for N stages | status |
-   |---|---|---|
-   | `each` (now default) | preheat before every stage | matches the reference |
-   | `one` | one leading preheat, then N cook stages | refused |
-   | `none` | N cook stages, no preheat | refused |
-
-   Single-stage recipes compile identically under `one` and `each`, so the
-   known-good path is unaffected either way. **Once a layout is confirmed,
-   collapse this back to a constant and delete the selector** - it is scaffolding,
-   not a feature.
+   **Lesson worth keeping: do not ship an experiment as a stored preference.**
+   A stored value outlives the experiment and silently disables whatever comes
+   next. Hardcode the variant, ship it, and change the code to test the next one.
 2. **A timerless cook parks at temperature with no hint.** Legitimate behaviour
    on the last stage, but the app never read `stageTransitionPendingUserAction`.
    The cook screen now shows "Preheated - press start on the oven" when it flips.
