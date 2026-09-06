@@ -248,12 +248,29 @@ eyeballing. Ask Claude to rebuild the harness; the pattern is:
 
 ---
 
+## The multi-stage payload, as confirmed working
+
+For each user stage, in order, emit a pair:
+
+```
+preheat: id "<uuid>-preheat", type "preheat", no timer/probe fields
+cook:    id "<uuid>",         type "cook",    timerAdded/probeAdded + timer{initial}
+```
+
+Both halves carry the same temperature, elements, fan, vent, rack and steam.
+`cookId` is `android-<uuid>`; **stage ids are bare**. No `stageTransitionType`,
+no `timer.startType`, no `timerStartOnDetect` anywhere. The last stage may set
+`userActionRequired: true` when it has neither timer nor probe, which parks the
+oven at temperature until someone presses its panel.
+
 ## Open items
 
 1. ~~Mid-cook state capture.~~ Done 2026-09-06, see above. Still wanted: a capture
    **at the preheat -> cook transition** (does `stageTransitionPendingUserAction`
    flip to true?) and one from a genuinely multi-stage recipe (4+ API stages).
-2. **Probe cook on hardware.** Confirms `temperatureProbe` vs `probe` field naming.
+2. **Probe cook on hardware.** Confirms `temperatureProbe` vs `probe` field
+   naming. Still untested, and now the largest untested path in the app - the
+   probe branch of `stagePair()` has never run against the oven.
 3. **Which id `processedCommandIds` echoes** — requestId or cookId.
 4. Possible features: notification when a stage ends, cook history,
    per-recipe rack reminders. (Screen wake lock: done 2026-09-06.)
@@ -274,7 +291,11 @@ exercised in a browser.**
 
 ## Bugs found from the 2026-09-06 capture — all fixed same day
 
-1. **Multi-stage recipes would not start.** Owner-reported: adding a second stage
+1. **Multi-stage recipes would not start. FIXED AND CONFIRMED ON HARDWARE
+   2026-09-06** - a simple two-stage recipe now runs. The cause was stage id
+   pairing (see below); everything above it in this entry is the trail of three
+   wrong guesses, kept because the reasoning shows what the oven does *not*
+   care about. Owner-reported: adding a second stage
    made a working recipe fail to start; deleting it fixed it. `stagePair()` set
    `userActionRequired:true` + `stageTransitionType:'manual'` on *every* cook
    stage lacking a timer and probe, so a middle stage had no exit condition -
@@ -354,11 +375,13 @@ exercised in a browser.**
    single-stage ones. If narrowing that down ever matters, reintroduce them one
    at a time.
 
-   **Casualty:** the recipe editor's "start timer when preheated / immediately"
-   option no longer reaches the oven, because the reference has no field for it.
-   The preheat stage already means the timer starts at temperature, so behaviour
-   is unchanged for the default - but the control is now inert and should either
-   be removed or reimplemented once the multi-stage path is confirmed working.
+   **Casualty, now resolved:** the recipe editor's "start timer when preheated /
+   immediately / when I tap start" option could no longer reach the oven, since a
+   working payload has no `timer.startType`. The control was removed on
+   2026-09-06 rather than left inert, and the editor now states plainly that the
+   timer starts once the oven reaches temperature - which is what the preheat
+   stage already guarantees. `timerStart` is gone from the recipe object; old
+   saved recipes simply carry an ignored extra key.
 
    **REMOVED: the `store.plan` layout selector.** It briefly let the owner switch
    between preheat layouts from Setup. It also created a trap that cost a full

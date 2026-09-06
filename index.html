@@ -763,7 +763,7 @@ function renderQuickList(force){
 function blankStage(){
   return { temp: 350, unit:'F', mode:'dry', steam:'none', steamVal:100,
            top:false, bottom:false, rear:true, fan:100, vent:false,
-           rack:3, timer:1800, timerStart:'when-preheated', probe:0 };
+           rack:3, timer:1800, probe:0 };
 }
 function blankRecipe(){ return { id: uuid(), name:'', stages:[blankStage()] }; }
 
@@ -939,10 +939,10 @@ function stageForm(s, idx){
   if (cond === 'time'){
     const gg = el('div','grid2'); gg.style.marginTop = '9px';
     gg.appendChild(numField('Minutes', Math.round(s.timer/60), v => s.timer = Math.max(0, v)*60));
-    gg.appendChild(selField('Timer starts', [
-      ['when-preheated','Once preheated'],['immediately','Right away'],['manual','When I tap start']
-    ], s.timerStart, v => s.timerStart = v));
     f6.appendChild(gg);
+    const note = el('div','hint');
+    note.textContent = 'The timer starts once the oven reaches this temperature.';
+    f6.appendChild(note);
   } else if (cond === 'probe'){
     const pf = numField('Probe target °' + store.unit,
       Math.round(store.unit === 'F' ? s.probe : f2c(s.probe)),
@@ -1136,7 +1136,7 @@ function confirmRun(r){
     if (s.steam !== 'none') sub.push(s.steamVal + '% ' + (s.steam === 'rh' ? 'humidity' : 'steam'));
     sub.push('rack ' + s.rack);
     if (s.probe > 0) sub.push('until probe hits ' + Math.round(store.unit==='F'?s.probe:f2c(s.probe)) + '°');
-    else if (s.timer > 0) sub.push(mins(s.timer) + (s.timerStart==='when-preheated' ? ' after preheat' : ''));
+    else if (s.timer > 0) sub.push(mins(s.timer) + ' after preheat');
     else sub.push('holds until you advance it');
     c.innerHTML = '<div class="nm">' + t + '°' + store.unit + (s.mode==='wet' ? ' sous vide' : '') + '</div>' +
                   '<div class="sub">' + esc(sub.join(', ')) + '</div>';
