@@ -228,8 +228,16 @@ Type: Barlow Condensed for numerals and headings, Barlow for body.
 
 ## Testing
 
-There is no browser in the Claude container, so the app is tested headlessly with
-jsdom (`npm install jsdom`), stubbing `WebSocket` to capture outbound frames and
+**On this Mac there is no Node**, so the jsdom route below is unavailable. What
+works instead is macOS's built-in JavaScriptCore at
+`/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc`:
+extract the functions under test out of `index.html` with a short Python script,
+`load()` them into jsc with stubs for `store`, `uuid`, `navigator` and
+`document`, and assert on the objects they build. That covers payload
+construction, validation and the wake-lock state machine — everything except DOM
+wiring. Installing Node would restore the fuller jsdom option:
+
+jsdom (`npm install jsdom`) stubs `WebSocket` to capture outbound frames and
 inject recorded state messages. This catches real bugs — use it rather than
 eyeballing. Ask Claude to rebuild the harness; the pattern is:
 
@@ -264,18 +272,28 @@ Verified with a JavaScriptCore harness driving the extracted functions against a
 stubbed `navigator.wakeLock`. **The DOM wiring - the Setup toggle - has not been
 exercised in a browser.**
 
-## Known bugs found from the 2026-09-06 capture
+## Bugs found from the 2026-09-06 capture — all fixed same day
 
-1. **A cook with no timer and no probe silently waits for the oven panel.**
-   `stagePair()` sets `userActionRequired:true` and `stageTransitionType:'manual'`
-   on the cook stage in that case, so the oven finishes preheating and then holds,
-   waiting for a press on its own front panel. The app never reads
-   `stageTransitionPendingUserAction`, so it just keeps saying "Preheating" and
-   looks hung. Needs surfacing in the UI at minimum.
-2. **Stage counts are API stages, not user stages.** `renderCook()` renders
-   `stage (i+1) of stages.length`, so a one-stage recipe reads "stage 1 of 2"
-   because every user stage compiles to a preheat/cook pair. Should map back to
-   user stages (`i/2+1` of `length/2`).
+1. **Multi-stage recipes would not start.** Owner-reported: adding a second stage
+   made a working recipe fail to start; deleting it fixed it. `stagePair()` set
+   `userActionRequired:true` + `stageTransitionType:'manual'` on *every* cook
+   stage lacking a timer and probe, so a middle stage had no exit condition -
+   the oven was asked to wait forever partway through a plan. Now only the
+   **final** stage may go manual (`stagePair(s, isLast)`), and `validate()`
+   rejects a non-final stage with neither timer nor probe before sending.
+   **Hypothesis-driven: the oven's rejection reason was never actually seen.**
+   Confirm with a 2-stage run, and check Setup if it still fails.
+2. **A timerless cook parks at temperature with no hint.** Legitimate behaviour
+   on the last stage, but the app never read `stageTransitionPendingUserAction`.
+   The cook screen now shows "Preheated - press start on the oven" when it flips.
+3. **Stage counts were API stages.** A one-stage recipe read "stage 1 of 2".
+   `userStage()` maps back by counting `cook` stages, one per user stage.
+4. **Errors were only ever toasted** for 2.6 s, so a silent rejection left no
+   trace. `lastError` is kept and rendered under Setup -> Troubleshooting, and
+   an ERROR now clears the pending-command wait instead of letting it time out.
+5. Both stages of a pair shared one `temperatureBulbs` object. Now built per stage.
+
+Regression tests for all of this run under JavaScriptCore (see Testing).
 
 ## Things not to break
 

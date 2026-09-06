@@ -119,6 +119,13 @@ main{padding:var(--pad);max-width:640px;margin:0 auto}
   font-variant-numeric:tabular-nums;line-height:1;margin-top:6px
 }
 .clock small{font-size:15px;color:var(--dim);font-family:'Barlow',sans-serif;font-weight:400;margin-left:8px}
+.errbox{
+  margin-bottom:11px;padding:10px 12px;border-radius:9px;font-size:13.5px;line-height:1.45;
+  color:var(--danger);background:rgba(217,85,63,.10);border:1px solid rgba(217,85,63,.38)}
+.errbox .dim{color:var(--dim)}
+.now .waiting{
+  margin-top:11px;padding:9px 11px;border-radius:9px;font-size:13.5px;line-height:1.4;
+  color:var(--ember);background:rgba(240,160,57,.11);border:1px solid rgba(240,160,57,.35)}
 
 /* ---------- buttons ---------- */
 .btn{
@@ -243,6 +250,7 @@ pre{
   <div class="now" id="cookNow" style="display:none">
     <div class="stage" id="stageTxt"></div>
     <div class="clock" id="clockTxt"></div>
+    <div class="waiting" id="waitTxt" style="display:none">Preheated &mdash; press start on the oven to begin cooking.</div>
   </div>
 
   <button class="btn stop" id="btnStop" style="display:none">Stop cooking</button>
@@ -312,6 +320,7 @@ pre{
   <div id="devInfo" class="empty">Not connected yet.</div>
 
   <h2 class="sec">Troubleshooting</h2>
+  <div id="lastErr" style="display:none"></div>
   <button class="btn slim" id="btnRaw">Show raw oven data</button>
   <div class="hint">Useful if a reading looks wrong &mdash; send me this and I can correct the app.</div>
 </section>
@@ -373,7 +382,7 @@ const bounds = lim => store.unit === 'F' ? lim.f : lim.c;
 
 /* ---------- app state ---------- */
 let ws = null, wsState = 'off', device = null, raw = null, snap = null;
-let lastMsg = 0, retry = 0, retryTimer = null, tick = null;
+let lastMsg = 0, retry = 0, retryTimer = null, tick = null, lastError = null;
 let editing = null, editIdx = -1;
 let pending = null, pendingTimer = null;
 
@@ -532,7 +541,13 @@ function handle(m){
 
   if (cmd === 'ERROR' || m.error){
     const p = m.payload || {};
-    toast(p.errorMessage || p.message || 'The oven rejected that command');
+    const msg = p.errorMessage || p.message || 'The oven rejected that command';
+    // Toasts vanish in under three seconds, which is no use when a cook silently
+    // fails to start. Keep the last one so Setup can show what actually happened.
+    lastError = { msg: msg, at: new Date() };
+    if (pending){ pending = null; clearTimeout(pendingTimer); }
+    toast(msg);
+    renderSetup();
   }
 }
 
@@ -592,11 +607,20 @@ function renderCook(){
     const ck = snap.cook;
     const stages = ck.stages || [];
     const i = ck.activeStageIndex;
-    const cnt = stages.length;
     let label = 'Cooking';
     if (i != null && stages[i]) label = stages[i].title || (stages[i].type === 'preheat' ? 'Preheating' : 'Cooking');
+
+    // Each stage the user wrote compiles to a preheat + cook pair, so the raw
+    // index would read "stage 1 of 2" for a single-stage recipe. Count cook
+    // stages instead - there is exactly one per user stage.
+    const us = userStage(stages, i);
     $('#stageTxt').innerHTML = '<b>' + esc(label) + '</b>' +
-      (cnt > 1 && i != null ? ' &nbsp;stage ' + (i+1) + ' of ' + cnt : '');
+      (us && us.total > 1 ? ' &nbsp;stage ' + us.index + ' of ' + us.total : '');
+
+    // The oven parks at temperature until someone presses its own panel. Without
+    // this the app just says "Preheating" forever and looks hung.
+    const waiting = !!ck.stageTransitionPendingUserAction;
+    $('#waitTxt').style.display = waiting ? 'block' : 'none';
 
     const tm = n.timer || {};
     if (tm.current != null && tm.mode && tm.mode !== 'idle'){
@@ -613,6 +637,15 @@ function renderCook(){
   $('#btnStop').style.display = cooking ? 'block' : 'none';
   $('#idleZone').style.display = cooking ? 'none' : 'block';
   if (!cooking) renderQuickList();
+}
+
+// Map an API stage index back to the stage the user actually wrote.
+function userStage(stages, i){
+  if (i == null || !stages.length) return null;
+  const total = stages.filter(s => s.type === 'cook').length;
+  if (!total) return { index: i + 1, total: stages.length };   // unexpected shape
+  const done = stages.slice(0, i + 1).filter(s => s.type === 'cook').length;
+  return { index: done + (stages[i] && stages[i].type === 'preheat' ? 1 : 0), total };
 }
 
 function drawScale(cur, set, wet, u){
@@ -952,6 +985,10 @@ function validate(r){
     }
     if (s.mode === 'wet' && s.steam === 'none')
       errs.push(tag + 'sous vide mode needs steam — set humidity to 100%.');
+    // Every stage but the last needs something that ends it, or the oven has no
+    // way to know when to move on and rejects the whole cook.
+    if (i < r.stages.length - 1 && !(s.timer > 0) && !(s.probe > 0))
+      errs.push(tag + 'set a timer or a probe target — the oven needs to know when to move to the next stage.');
   });
   return errs;
 }
@@ -959,9 +996,10 @@ function validate(r){
 /* ============================================================
    Building and sending the cook
    ============================================================ */
-function stagePair(s){
+function stagePair(s, isLast){
   const c = toC(s), f = c2f(c);
-  const bulbs = s.mode === 'wet'
+  // Built per stage, not shared: two stages aliasing one object is a trap.
+  const bulbs = () => s.mode === 'wet'
     ? { mode:'wet', wet:{ setpoint:{ celsius:round2(c), fahrenheit:Math.round(f) } } }
     : { mode:'dry', dry:{ setpoint:{ celsius:round2(c), fahrenheit:Math.round(f) } } };
 
@@ -969,7 +1007,7 @@ function stagePair(s){
     const st = {
       stepType:'stage', id: uuid(), title:'', description:'',
       userActionRequired:false,
-      temperatureBulbs: bulbs,
+      temperatureBulbs: bulbs(),
       heatingElements: { top:{on:!!s.top}, bottom:{on:!!s.bottom}, rear:{on:!!s.rear} },
       fan: { speed: clamp(Math.round(s.fan), 0, 100) },
       vent: { open: !!s.vent },
@@ -992,7 +1030,10 @@ function stagePair(s){
     cook.timerAdded = true; cook.probeAdded = false; cook.timerStartOnDetect = false;
     cook.timer = { initial: Math.round(s.timer) };
     if (s.timerStart && s.timerStart !== 'immediately') cook.timer.startType = s.timerStart;
-  } else {
+  } else if (isLast){
+    // No timer and no probe: the oven holds at temperature until someone presses
+    // its panel. Only legal on the final stage - a middle stage that waits
+    // forever has no exit condition, and validate() rejects that case.
     cook.userActionRequired = true;
     cook.stageTransitionType = 'manual';
   }
@@ -1006,7 +1047,7 @@ function runRecipe(r){
   if (errs.length){ toast(errs[0]); return; }
 
   const stages = [];
-  r.stages.forEach(s => stages.push(...stagePair(s)));
+  r.stages.forEach((s, i) => stages.push(...stagePair(s, i === r.stages.length - 1)));
   const reqId = uuid(), cookId = uuid();
 
   const ok = send({
@@ -1029,7 +1070,7 @@ function runRecipe(r){
   });
   if (!ok) return;
   toast('Sending to the oven');
-  expect([reqId, cookId], 'The oven started', 'No confirmation from the oven — check its panel');
+  expect([reqId, cookId], 'The oven started', 'The oven never confirmed — check Setup for an error, and the oven panel');
   go('cook');
 }
 
@@ -1107,6 +1148,14 @@ function manualCook(){
    Setup screen
    ============================================================ */
 function renderSetup(){
+  const le = $('#lastErr');
+  if (lastError){
+    le.style.display = 'block';
+    le.className = 'errbox';
+    le.innerHTML = '<b>Last error from the oven</b><br>' + esc(lastError.msg) +
+      '<br><span class="dim">' + esc(lastError.at.toLocaleTimeString()) + '</span>';
+  } else le.style.display = 'none';
+
   const box = $('#devInfo');
   if (!device){ box.className = 'empty'; box.textContent = store.token ? 'Looking for your oven…' : 'Add your token, then connect.'; return; }
   box.className = '';
