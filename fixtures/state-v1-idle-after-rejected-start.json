@@ -1,0 +1,53 @@
+{
+  "_note": "Captured 2026-09-06T16:09Z, right after a 2-stage recipe (both stages timed) failed to start. state.mode is idle and there is NO cook object: the oven refused the plan rather than starting it. Oven is cooling from the earlier single-stage run, hence the stale dry.setpoint of 399.99 and rear.on true at 0 watts.",
+  "cookerId": "0123c79e76ceee3401",
+  "type": "oven_v1",
+  "state": {
+    "version": 1,
+    "updatedTimestamp": "2026-09-06T16:08:41.286Z",
+    "systemInfo": {
+      "online": true, "hardwareVersion": "120V1", "powerMains": 120, "powerHertz": 60,
+      "firmwareVersion": "2.1.16", "uiHardwareVersion": "UI_ORIGINAL_2", "uiFirmwareVersion": "0.0.0",
+      "firmwareUpdatedTimestamp": "2024-12-04T07:03:36Z",
+      "lastConnectedTimestamp": "2026-09-06T15:07:45Z",
+      "lastDisconnectedTimestamp": "2026-09-05T22:47:14Z", "triacsFailed": false
+    },
+    "state": {
+      "mode": "idle", "temperatureUnit": "F",
+      "processedCommandIds": [
+        "b3d4b525-2659-4cdc-a380-0c2f604f8719","9f34a8b7-c5e2-4768-a666-993d48335921",
+        "f815950e-4ca1-409f-9191-b836c8a55cac","e736d14a-ed55-472f-8be8-daa12069c9e1",
+        "58ebfa53-868b-4a02-b842-18efefae7b52","d26b7d9c-8dac-4eb3-82d9-8c4cd3abc102",
+        "de590345-03db-4afb-a410-65dac2e5ff0b","38f6a810-62e5-40e7-985e-b9a0f6b7b038",
+        "abd78d26-9537-4674-ae77-3dc2a23bf187","b1fc5419-3769-432f-9d4e-3f377101967a"
+      ]
+    },
+    "nodes": {
+      "temperatureBulbs": {
+        "mode": "dry",
+        "wet": { "current": { "celsius": 128.9, "fahrenheit": 264.02 }, "dosed": false, "doseFailed": false },
+        "dry": { "current": { "celsius": 170.06, "fahrenheit": 338.1 }, "setpoint": { "celsius": 204.44, "fahrenheit": 399.99 } },
+        "dryTop": { "current": { "celsius": 170.06, "fahrenheit": 338.1 }, "overheated": false },
+        "dryBottom": { "current": { "celsius": 157.89, "fahrenheit": 316.2 }, "overheated": false }
+      },
+      "timer": { "mode": "idle", "initial": 0, "current": 0 },
+      "temperatureProbe": { "connected": false },
+      "steamGenerators": {
+        "mode": "idle", "relativeHumidity": { "current": 43 },
+        "evaporator": { "failed": false, "overheated": false, "celsius": 82.71, "watts": 0 },
+        "boiler": { "descaleRequired": false, "failed": false, "overheated": false, "celsius": 42.18, "watts": 0, "dosed": false }
+      },
+      "heatingElements": {
+        "top": { "on": false, "failed": false, "watts": 0 },
+        "bottom": { "on": false, "failed": false, "watts": 0 },
+        "rear": { "on": true, "failed": false, "watts": 0 }
+      },
+      "fan": { "speed": 0, "failed": false },
+      "vent": { "open": true },
+      "waterTank": { "empty": false },
+      "door": { "closed": true },
+      "lamp": { "on": false, "failed": false, "preference": "on" },
+      "userInterfaceCircuit": { "communicationFailed": false }
+    }
+  }
+}

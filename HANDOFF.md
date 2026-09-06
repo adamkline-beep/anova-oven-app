@@ -281,8 +281,18 @@ exercised in a browser.**
    the oven was asked to wait forever partway through a plan. Now only the
    **final** stage may go manual (`stagePair(s, isLast)`), and `validate()`
    rejects a non-final stage with neither timer nor probe before sending.
-   **Hypothesis-driven: the oven's rejection reason was never actually seen.**
-   Confirm with a 2-stage run, and check Setup if it still fails.
+   **This did NOT fix it.** A 2-stage recipe with a timer on every stage still
+   fails to start (capture: `fixtures/state-v1-idle-after-rejected-start.json`,
+   `mode:"idle"`, no `cook` object - the oven refused the plan outright). Note
+   that with timers set, the old and new code build near-identical payloads, so
+   this change was never going to address the timed case. The change is still
+   correct on its own terms, but **the multi-stage cause is still unknown.**
+
+   Leading untested hypothesis: `stagePair()` emits a `preheat` stage before
+   *every* user stage, so a 2-stage recipe sends preheat, cook, preheat, cook.
+   A mid-plan `preheat` may be invalid - the oven may expect one leading preheat
+   and plain `cook` stages after it. Do not change this without reading the
+   oven's actual error first; that has now been made visible (see Diagnosis).
 2. **A timerless cook parks at temperature with no hint.** Legitimate behaviour
    on the last stage, but the app never read `stageTransitionPendingUserAction`.
    The cook screen now shows "Preheated - press start on the oven" when it flips.
@@ -294,6 +304,21 @@ exercised in a browser.**
 5. Both stages of a pair shared one `temperatureBulbs` object. Now built per stage.
 
 Regression tests for all of this run under JavaScriptCore (see Testing).
+
+## Diagnosis
+
+Failures used to leave no trace: a 2.6 s toast and nothing else, which is why
+"it just will not start" was all anyone had. As of 2026-09-06:
+
+- `fail(msg)` is the single failure path. Validation refusals, a send with no
+  socket, an oven `ERROR`, and the 12 s acknowledgement timeout all route
+  through it, so every one of them persists.
+- `lastError` (message, timestamp, and the whole inbound frame) renders under
+  **Setup -> Troubleshooting**.
+- `lastSent` keeps the exact outbound frame.
+- **Setup -> Show raw oven data** now dumps `{lastError, lastCommandSent,
+  ovenState}` together. One copy of that is enough to diagnose a failed start -
+  ask for it rather than reasoning about what the app probably sent.
 
 ## Things not to break
 

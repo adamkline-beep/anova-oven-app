@@ -383,6 +383,8 @@ const bounds = lim => store.unit === 'F' ? lim.f : lim.c;
 /* ---------- app state ---------- */
 let ws = null, wsState = 'off', device = null, raw = null, snap = null;
 let lastMsg = 0, retry = 0, retryTimer = null, tick = null, lastError = null;
+// Kept purely for diagnosis: the exact frame last sent, and the last rejection.
+let lastSent = null;
 let editing = null, editIdx = -1;
 let pending = null, pendingTimer = null;
 
@@ -391,7 +393,7 @@ function expect(ids, label, failLabel){
   clearTimeout(pendingTimer);
   pending = { ids: ids.filter(Boolean), label };
   pendingTimer = setTimeout(() => {
-    if (pending){ pending = null; toast(failLabel); }
+    if (pending){ pending = null; fail(failLabel); }
   }, 12000);
 }
 
@@ -501,9 +503,21 @@ function setWake(on){
 }
 
 function send(obj){
-  if (!ws || ws.readyState !== 1){ toast('Not connected to the oven'); return false; }
+  if (!ws || ws.readyState !== 1){
+    fail('Not connected to the oven — nothing was sent.');
+    return false;
+  }
+  lastSent = { at: new Date(), frame: obj };
   ws.send(JSON.stringify(obj));
   return true;
+}
+
+// One place for "this did not work", so a failure always leaves a trace the
+// owner can copy out of Setup instead of a toast that vanishes in 2.6 seconds.
+function fail(msg){
+  lastError = { msg: msg, at: new Date() };
+  toast(msg);
+  renderSetup();
 }
 
 /* ============================================================
@@ -544,8 +558,9 @@ function handle(m){
     const msg = p.errorMessage || p.message || 'The oven rejected that command';
     // Toasts vanish in under three seconds, which is no use when a cook silently
     // fails to start. Keep the last one so Setup can show what actually happened.
-    lastError = { msg: msg, at: new Date() };
     if (pending){ pending = null; clearTimeout(pendingTimer); }
+    // Keep the whole frame: the errorMessage alone has not been enough.
+    lastError = { msg: msg, at: new Date(), frame: m };
     toast(msg);
     renderSetup();
   }
@@ -1044,7 +1059,7 @@ const round2 = v => Math.round(v*100)/100;
 function runRecipe(r){
   if (!device){ toast('Not connected to the oven'); return; }
   const errs = validate(r);
-  if (errs.length){ toast(errs[0]); return; }
+  if (errs.length){ fail('Not sent — ' + errs.join('  ')); return; }
 
   const stages = [];
   r.stages.forEach((s, i) => stages.push(...stagePair(s, i === r.stages.length - 1)));
@@ -1279,8 +1294,14 @@ $('#btnForget').onclick = () => {
 $('#btnRaw').onclick = () => {
   const inner = $('#sheetInner'); inner.innerHTML = '';
   const h = el('h2'); h.textContent = 'Raw oven data';
-  const p = el('p'); p.textContent = raw ? 'The last state message, exactly as the oven sent it.' : 'Nothing received yet.';
-  const pre = el('pre'); pre.textContent = raw ? JSON.stringify(raw, null, 2) : '—';
+  const p = el('p'); p.textContent = 'The last state from the oven, the last command sent, and the last error — copy all of it.';
+  const dump = {
+    capturedAt: new Date().toISOString(),
+    lastError: lastError ? { at: lastError.at.toISOString(), message: lastError.msg, frame: lastError.frame || null } : null,
+    lastCommandSent: lastSent ? { at: lastSent.at.toISOString(), frame: lastSent.frame } : null,
+    ovenState: raw || null
+  };
+  const pre = el('pre'); pre.textContent = JSON.stringify(dump, null, 2);
   const cp = el('button','btn slim'); cp.textContent = 'Copy'; cp.style.marginTop = '12px';
   cp.onclick = () => { navigator.clipboard.writeText(pre.textContent); toast('Copied'); };
   const cl = el('button','btn slim'); cl.textContent = 'Close'; cl.style.marginTop = '10px';
