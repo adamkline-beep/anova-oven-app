@@ -119,6 +119,11 @@ main{padding:var(--pad);max-width:640px;margin:0 auto}
   font-variant-numeric:tabular-nums;line-height:1;margin-top:6px
 }
 .clock small{font-size:15px;color:var(--dim);font-family:'Barlow',sans-serif;font-weight:400;margin-left:8px}
+.ta{
+  width:100%;min-height:150px;margin-top:10px;padding:11px 12px;border-radius:10px;
+  background:var(--oven);border:1px solid var(--line);color:var(--text);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.45;
+  resize:vertical}
 .errbox{
   margin-bottom:11px;padding:10px 12px;border-radius:9px;font-size:13.5px;line-height:1.45;
   color:var(--danger);background:rgba(217,85,63,.10);border:1px solid rgba(217,85,63,.38)}
@@ -270,6 +275,8 @@ pre{
     <button class="btn slim" id="btnExport">Export all</button>
     <button class="btn slim" id="btnImport">Import</button>
   </div>
+  <button class="btn slim" id="btnLibrary" style="margin-top:10px">Recipe library</button>
+  <div class="hint">Recipes added to the app&rsquo;s repository show up here.</div>
 </section>
 
 <!-- ================= EDITOR ================= -->
@@ -766,6 +773,57 @@ function blankStage(){
            rack:3, timer:1800, probe:0 };
 }
 function blankRecipe(){ return { id: uuid(), name:'', stages:[blankStage()] }; }
+
+// Anything arriving from outside the app - a paste, a file, the repo library -
+// goes through here. Missing fields fall back to the blank stage, everything is
+// coerced and clamped, and the id is always reissued so an import can never
+// collide with a saved recipe.
+function normalizeRecipe(r){
+  const num = (v, d) => Number.isFinite(+v) ? +v : d;
+  r = r || {};
+  const src = Array.isArray(r.stages) && r.stages.length ? r.stages : [blankStage()];
+  return {
+    id: uuid(),
+    name: String(r.name || 'Untitled').trim().slice(0, 60) || 'Untitled',
+    stages: src.slice(0, 12).map(s => {
+      s = s || {};
+      const unit = s.unit === 'C' ? 'C' : 'F';
+      const steam = (s.steam === 'rh' || s.steam === 'pct') ? s.steam : 'none';
+      return {
+        temp: num(s.temp, unit === 'F' ? 350 : 175),
+        unit,
+        mode: s.mode === 'wet' ? 'wet' : 'dry',
+        steam,
+        steamVal: clamp(Math.round(num(s.steamVal, 100)), 0, 100),
+        top: !!s.top,
+        bottom: !!s.bottom,
+        rear: s.rear === undefined ? true : !!s.rear,
+        fan: clamp(Math.round(num(s.fan, 100)), 0, 100),
+        vent: !!s.vent,
+        rack: clamp(Math.round(num(s.rack, 3)), 1, 3),
+        timer: Math.max(0, Math.round(num(s.timer, 0))),
+        probe: Math.max(0, Math.round(num(s.probe, 0)))
+      };
+    })
+  };
+}
+
+// Accept any of the shapes a recipe might arrive in.
+function recipesFrom(d){
+  if (Array.isArray(d)) return d;
+  if (d && Array.isArray(d.anovaRecipes)) return d.anovaRecipes;
+  if (d && Array.isArray(d.recipes)) return d.recipes;
+  if (d && d.stages) return [d];
+  return null;
+}
+
+function addRecipes(list, source){
+  const rs = store.recipes;
+  list.forEach(r => rs.push(normalizeRecipe(r)));
+  store.recipes = rs;
+  renderAll(); go('recipes');
+  toast('Added ' + list.length + ' recipe' + (list.length === 1 ? '' : 's') + (source ? ' from ' + source : ''));
+}
 
 function summarize(r){
   return (r.stages||[]).map(s => {
@@ -1268,24 +1326,73 @@ $('#btnExport').onclick = () => {
 };
 
 $('#btnImport').onclick = () => {
-  const i = el('input'); i.type = 'file'; i.accept = 'application/json,.json';
-  i.onchange = () => {
-    const f = i.files[0]; if (!f) return;
-    const rd = new FileReader();
-    rd.onload = () => {
-      try {
-        const d = JSON.parse(rd.result);
-        const list = Array.isArray(d) ? d : d.anovaRecipes;
-        if (!Array.isArray(list)) throw new Error('bad');
-        const rs = store.recipes;
-        list.forEach(r => { r.id = uuid(); rs.push(r); });
-        store.recipes = rs; renderAll(); go('recipes');
-        toast('Added ' + list.length + ' recipe' + (list.length===1?'':'s'));
-      } catch { toast("That file isn't a recipe export"); }
-    };
-    rd.readAsText(f);
+  const inner = $('#sheetInner'); inner.innerHTML = '';
+  const h = el('h2'); h.textContent = 'Import a recipe';
+  const p = el('p'); p.textContent = 'Paste recipe JSON below — one recipe or a list of them.';
+  const ta = el('textarea','ta'); ta.placeholder = '{ "name": "...", "stages": [ ... ] }';
+  const add = el('button','btn go'); add.textContent = 'Add to my recipes'; add.style.marginTop = '12px';
+  add.onclick = () => {
+    const txt = ta.value.trim();
+    if (!txt){ toast('Nothing pasted'); return; }
+    let list;
+    try { list = recipesFrom(JSON.parse(txt)); }
+    catch { toast("That isn't valid JSON"); return; }
+    if (!list || !list.length){ toast("No recipes in that"); return; }
+    closeSheet(); addRecipes(list);
   };
-  i.click();
+  const file = el('button','btn slim'); file.textContent = 'Load a file instead'; file.style.marginTop = '10px';
+  file.onclick = () => {
+    const i = el('input'); i.type = 'file'; i.accept = 'application/json,.json';
+    i.onchange = () => {
+      const f = i.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        let list;
+        try { list = recipesFrom(JSON.parse(rd.result)); } catch { list = null; }
+        if (!list || !list.length){ toast("That file isn't a recipe export"); return; }
+        closeSheet(); addRecipes(list);
+      };
+      rd.readAsText(f);
+    };
+    i.click();
+  };
+  const cl = el('button','btn slim'); cl.textContent = 'Cancel'; cl.style.marginTop = '10px';
+  cl.onclick = closeSheet;
+  inner.append(h, p, ta, add, file, cl);
+  $('#sheet').classList.add('on');
+};
+
+// --- the shared library, served from the repo alongside the app ---
+$('#btnLibrary').onclick = () => {
+  const inner = $('#sheetInner'); inner.innerHTML = '';
+  const h = el('h2'); h.textContent = 'Recipe library';
+  const p = el('p'); p.textContent = 'Loading…';
+  const cl = el('button','btn slim'); cl.textContent = 'Close'; cl.style.marginTop = '12px';
+  cl.onclick = closeSheet;
+  inner.append(h, p, cl);
+  $('#sheet').classList.add('on');
+
+  fetch('./recipes/library.json', { cache: 'no-store' })
+    .then(res => { if (!res.ok) throw new Error(res.status); return res.json(); })
+    .then(d => {
+      const list = recipesFrom(d) || [];
+      if (!list.length){ p.textContent = 'The library is empty.'; return; }
+      p.textContent = 'Tap a recipe to copy it into your own. Edits you make afterwards stay on this phone.';
+      const box = el('div'); box.style.marginTop = '12px';
+      list.forEach(raw => {
+        const r = normalizeRecipe(raw);
+        const c = el('div','card');
+        c.innerHTML = '<div class="nm">' + esc(r.name) + '</div>' +
+                      '<div class="sub">' + esc(summarize(r)) + '</div>' +
+                      '<div class="go"></div>';
+        const b = el('button'); b.className = 'primary'; b.textContent = 'Add';
+        b.onclick = () => { closeSheet(); addRecipes([raw], 'the library'); };
+        c.querySelector('.go').append(b);
+        box.appendChild(c);
+      });
+      inner.insertBefore(box, cl);
+    })
+    .catch(() => { p.textContent = 'Could not load the library — check your connection and try again.'; });
 };
 
 $('#btnConnect').onclick = () => {

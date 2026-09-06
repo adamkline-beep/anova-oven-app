@@ -263,6 +263,25 @@ no `timer.startType`, no `timerStartOnDetect` anywhere. The last stage may set
 `userActionRequired: true` when it has neither timer nor probe, which parks the
 oven at temperature until someone presses its panel.
 
+## Getting recipes onto the phone
+
+Three routes, in order of how little the owner has to do:
+
+1. **Repo library.** `recipes/library.json` ships with the app; the phone lists
+   it under Recipes -> Recipe library and one tap copies an entry into the
+   owner's own recipes. **This is how Claude adds a recipe: edit that file,
+   commit, push.** Schema and the oven's rules are in `RECIPES.md`. The library
+   only offers - it never overwrites or syncs, so the owner's edits are safe.
+2. **Paste import.** Recipes -> Import takes JSON pasted straight in, which is
+   how a recipe travels from a chat to the phone without a file.
+3. **File import/export.** Still there, and Export all is the only backup the
+   app has.
+
+All three go through `normalizeRecipe()`, which fills gaps from `blankStage()`,
+coerces types, clamps ranges, caps stage count and always reissues the id. Treat
+it as the trust boundary for anything hand-authored - the editor assumes every
+field exists and would break on a partial recipe otherwise.
+
 ## Open items
 
 1. ~~Mid-cook state capture.~~ Done 2026-09-06, see above. Still wanted: a capture
