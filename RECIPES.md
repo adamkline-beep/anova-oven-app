@@ -37,6 +37,10 @@ breaking the editor. Write them all anyway; the defaults are not obvious.
 ## Rules the oven enforces
 
 - Never all three elements on, never all three off.
+- **A sous vide (`wet`) stage must run the fan at 100.** Confirmed on hardware:
+  the same stage at fan 25 is refused without a word. The app forces this, so
+  `fan` is ignored on a wet stage - but write 100 anyway so the file reads
+  truthfully.
 - `wet` mode requires steam, and caps at 212 F / 100 C.
 - Dry: 75-482 F. Dry with **only** the bottom element: 75-356 F.
 - **Every stage but the last needs a `timer` or a `probe`**, or the oven has no

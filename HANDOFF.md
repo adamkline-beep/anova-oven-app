@@ -300,10 +300,18 @@ oven declining configurations regardless of who sends them, and it means
 "matches what Anova's app sends" is not sufficient evidence that a payload will
 run.
 
-**Owner's hypothesis, untested:** the oven has rules about when the fan must be
-on. Plausible - the rear element is the convection element and running it
-without the fan would be unsafe - but the failing proof recipe now runs the fan
-at 100 with the rear element on, so it does not explain that case.
+**Owner's hypothesis was right. CONFIRMED ON HARDWARE 2026-09-06: a sous vide
+stage is refused at fan 25 and runs at fan 100**, everything else identical.
+Silently, like every other shape error. `stagePair()` now forces `fan.speed 100`
+on any wet stage, `validate()` repairs the saved recipe so the editor stops
+showing a figure that is not what gets sent, and the editor shows the fan as
+locked when the mode is sous vide. Dry stages keep whatever fan they are given -
+a dry stage at fan 25 runs fine.
+
+The exact threshold is unknown; 100 is simply the one value observed to work.
+Note this was raised early and dismissed on a bad reading - the library file had
+been changed to fan 100 but the owner's *saved copy*, imported before that
+change, still held 25. **Check what is on the phone, not what is in the repo.**
 
 **Diagnostic (still shipped, Setup -> Troubleshooting -> "Send Anova's own proof
 stage"): it STARTED, 2026-09-06.** The oven accepts the reference wet stage

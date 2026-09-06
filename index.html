@@ -119,6 +119,9 @@ main{padding:var(--pad);max-width:640px;margin:0 auto}
   font-variant-numeric:tabular-nums;line-height:1;margin-top:6px
 }
 .clock small{font-size:15px;color:var(--dim);font-family:'Barlow',sans-serif;font-weight:400;margin-left:8px}
+.locked{
+  padding:11px 12px;border-radius:10px;background:var(--oven);
+  border:1px dashed var(--line);color:var(--dim);font-size:13.5px}
 .ta{
   width:100%;min-height:150px;margin-top:10px;padding:11px 12px;border-radius:10px;
   background:var(--oven);border:1px solid var(--line);color:var(--text);
@@ -964,7 +967,14 @@ function stageForm(s, idx){
 
   // fan / rack / vent
   const f4 = el('div','grid2');
-  f4.appendChild(numField('Fan speed %', s.fan, v => s.fan = clamp(v,0,100)));
+  if (s.mode === 'wet'){
+    const ff = el('div','field');
+    ff.innerHTML = '<label>Fan speed %</label>' +
+      '<div class="locked">100 &mdash; sous vide always runs the fan at full</div>';
+    f4.appendChild(ff);
+  } else {
+    f4.appendChild(numField('Fan speed %', s.fan, v => s.fan = clamp(v,0,100)));
+  }
   f4.appendChild(selField('Rack position', ['1','2','3'], String(s.rack), v => s.rack = parseInt(v)));
   b.appendChild(f4);
 
@@ -1063,6 +1073,9 @@ function validate(r){
     }
     if (s.mode === 'wet' && s.steam === 'none')
       errs.push(tag + 'sous vide mode needs steam — set humidity to 100%.');
+    // Not fatal - stagePair() forces it - but an old recipe showing fan 25 and
+    // running at 100 would be a lie, so say so.
+    if (s.mode === 'wet' && s.fan !== 100) s.fan = 100;
     // Every stage but the last needs something that ends it, or the oven has no
     // way to know when to move on and rejects the whole cook.
     if (i < r.stages.length - 1 && !(s.timer > 0) && !(s.probe > 0))
@@ -1119,6 +1132,10 @@ function stagePair(s, isLast, withPreheat){
     delete cook.stepType; delete cook.description; delete cook.rackPosition;
     delete cook.timerAdded; delete cook.probeAdded;
     cook.userActionRequired = true;
+    // Sous vide is refused at anything less than a full fan, silently. Confirmed
+    // on hardware 2026-09-06: the same stage at fan 25 is dropped, at fan 100 it
+    // runs. The exact threshold is unknown, so use the one known-good value.
+    cook.fan = { speed: 100 };
   }
 
   if (!withPreheat) return [cook];
