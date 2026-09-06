@@ -323,11 +323,11 @@ pre{
   <div id="lastErr" style="display:none"></div>
   <div class="hint" style="margin-bottom:8px">Multi-stage layout &mdash; temporary, while we work out which one the oven accepts. Single-stage recipes are unaffected.</div>
   <div class="seg" id="planSeg">
-    <button data-p="one" aria-pressed="true">One preheat</button>
-    <button data-p="each" aria-pressed="false">Preheat each</button>
+    <button data-p="each" aria-pressed="true">Preheat each</button>
+    <button data-p="one" aria-pressed="false">One preheat</button>
     <button data-p="none" aria-pressed="false">No preheat</button>
   </div>
-  <div class="hint" style="margin-bottom:14px">&ldquo;Preheat each&rdquo; is the layout the oven refused.</div>
+  <div class="hint" style="margin-bottom:14px">&ldquo;Preheat each&rdquo; matches Anova&rsquo;s own apps and is the default.</div>
   <button class="btn slim" id="btnRaw">Show raw oven data</button>
   <div class="hint">Useful if a reading looks wrong &mdash; send me this and I can correct the app.</div>
 </section>
@@ -359,6 +359,10 @@ pre{
 
 const $ = s => document.querySelector(s);
 const el = (t, c) => { const n = document.createElement(t); if (c) n.className = c; return n; };
+// Anova's own clients prefix cookId and stage ids with the platform, and the
+// only known-working multi-stage payload does the same. Bare uuids are accepted
+// for a single stage but have never worked for more than one.
+const cookUuid = () => 'android-' + uuid();
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
   'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16);
@@ -379,7 +383,7 @@ const store = {
   // TEMPORARY. Multi-stage cooks are silently refused and the oven gives no
   // reason, so the stage layout is switchable while we find out which one it
   // accepts. Collapse this back to a constant once that is known.
-  get plan(){ return localStorage.getItem('anova.plan') || 'one'; },
+  get plan(){ return localStorage.getItem('anova.plan') || 'each'; },
   set plan(v){ localStorage.setItem('anova.plan', v); }
 };
 
@@ -1032,14 +1036,13 @@ function stagePair(s, isLast, withPreheat){
 
   const base = () => {
     const st = {
-      stepType:'stage', id: uuid(), title:'', description:'',
+      stepType:'stage', id: cookUuid(), title:'', description:'',
       userActionRequired:false,
       temperatureBulbs: bulbs(),
       heatingElements: { top:{on:!!s.top}, bottom:{on:!!s.bottom}, rear:{on:!!s.rear} },
       fan: { speed: clamp(Math.round(s.fan), 0, 100) },
       vent: { open: !!s.vent },
-      rackPosition: s.rack || 3,
-      stageTransitionType: 'automatic'
+      rackPosition: s.rack || 3
     };
     if (s.steam === 'rh') st.steamGenerators = { mode:'relative-humidity', relativeHumidity:{ setpoint: s.steamVal } };
     else if (s.steam === 'pct') st.steamGenerators = { mode:'steam-percentage', steamPercentage:{ setpoint: s.steamVal } };
@@ -1050,18 +1053,16 @@ function stagePair(s, isLast, withPreheat){
 
   if (s.probe > 0){
     const pc = f2c(s.probe);
-    cook.probeAdded = true;
+    cook.timerAdded = false; cook.probeAdded = true;
     cook.temperatureProbe = { setpoint:{ celsius: round2(pc), fahrenheit: Math.round(s.probe) } };
   } else if (s.timer > 0){
-    cook.timerAdded = true; cook.probeAdded = false; cook.timerStartOnDetect = false;
+    cook.timerAdded = true; cook.probeAdded = false;
     cook.timer = { initial: Math.round(s.timer) };
-    if (s.timerStart && s.timerStart !== 'immediately') cook.timer.startType = s.timerStart;
   } else if (isLast){
     // No timer and no probe: the oven holds at temperature until someone presses
     // its panel. Only legal on the final stage - a middle stage that waits
     // forever has no exit condition, and validate() rejects that case.
     cook.userActionRequired = true;
-    cook.stageTransitionType = 'manual';
   }
   if (!withPreheat) return [cook];
   const pre = base(); pre.type = 'preheat';
@@ -1082,7 +1083,7 @@ function runRecipe(r){
   r.stages.forEach((s, i) => stages.push(
     ...stagePair(s, i === r.stages.length - 1, plan === 'each' || (plan === 'one' && i === 0))
   ));
-  const reqId = uuid(), cookId = uuid();
+  const reqId = uuid(), cookId = cookUuid();
 
   const ok = send({
     command: 'CMD_APO_START',

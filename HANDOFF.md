@@ -306,15 +306,43 @@ exercised in a browser.**
    recipe started normally with the oven above 250 F, so cooldown state is not
    the cause. Stage count is.
 
-   **Current state: `store.plan` selects the stage layout**, switchable under
+   **CAUSE FOUND 2026-09-06 (pending hardware confirmation).** A known-working
+   3-stage payload exists at
+   `https://github.com/bogd/anova-oven-api/blob/main/docs/examples/CMD_APO_START.json`,
+   saved as `fixtures/reference-CMD_APO_START.json`. It is preheat/cook pairs -
+   so the original layout was right and both of my layout guesses were wrong
+   about which part was broken. Diffing it against
+   `fixtures/sent-2stage-rejected.json` showed four field-level differences, all
+   now corrected:
+
+   | | was sent | reference |
+   |---|---|---|
+   | `cookId`, stage `id` | bare uuid | **`android-<uuid>`** |
+   | `stageTransitionType` | `"automatic"` / `"manual"` | absent entirely |
+   | `timer.startType` | `"when-preheated"` | absent |
+   | `timerStartOnDetect` | `false` | absent |
+
+   The stage field sets now match the reference exactly, asserted in the tests.
+   Which of the four mattered is unknown - a single-stage cook was accepted with
+   all four wrong, so the oven is stricter about multi-stage payloads than
+   single-stage ones. If narrowing that down ever matters, reintroduce them one
+   at a time.
+
+   **Casualty:** the recipe editor's "start timer when preheated / immediately"
+   option no longer reaches the oven, because the reference has no field for it.
+   The preheat stage already means the timer starts at temperature, so behaviour
+   is unchanged for the default - but the control is now inert and should either
+   be removed or reimplemented once the multi-stage path is confirmed working.
+
+   **Superseded: `store.plan` selects the stage layout**, switchable under
    Setup -> Troubleshooting, because the oven gives no reason and each guess
    otherwise costs a deploy plus a trip to the kitchen:
 
    | value | layout for N stages | status |
    |---|---|---|
-   | `one` (default) | one leading preheat, then N cook stages | untested |
-   | `each` | preheat before every stage | **refused by the oven** |
-   | `none` | N cook stages, no preheat | untested |
+   | `each` (now default) | preheat before every stage | matches the reference |
+   | `one` | one leading preheat, then N cook stages | refused |
+   | `none` | N cook stages, no preheat | refused |
 
    Single-stage recipes compile identically under `one` and `each`, so the
    known-good path is unaffected either way. **Once a layout is confirmed,
