@@ -328,6 +328,8 @@ pre{
 
   <h2 class="sec">Troubleshooting</h2>
   <div id="lastErr" style="display:none"></div>
+  <button class="btn slim" id="btnRefProof" style="margin-bottom:6px">Send Anova&rsquo;s own proof stage</button>
+  <div class="hint" style="margin-bottom:14px">A diagnostic. Replays one stage copied verbatim from a recipe the Anova app ran on this oven &mdash; 80.6&deg;F sous vide, 60% humidity, 40 min. If this starts, the problem is in how this app builds a cook. If it does not, the oven is refusing a plan it accepted from Anova&rsquo;s own app.</div>
   <button class="btn slim" id="btnRaw">Show raw oven data</button>
   <div class="hint">Useful if a reading looks wrong &mdash; send me this and I can correct the app.</div>
 </section>
@@ -1397,6 +1399,41 @@ $('#btnLibrary').onclick = () => {
       inner.insertBefore(box, cl);
     })
     .catch(() => { p.textContent = 'Could not load the library — check your connection and try again.'; });
+};
+
+// DIAGNOSTIC. The stage below is copied field-for-field from
+// fixtures/state-v1-official-anova-multistage.json - a plan this oven really
+// ran, started from the Anova app. Caveat: the oven strips fields from the
+// plans it echoes, so this is everything Anova's app was *observed* to send,
+// which may be less than it actually sent.
+$('#btnRefProof').onclick = () => {
+  if (!device){ toast('Not connected to the oven'); return; }
+  const id = uuid(), reqId = uuid(), cookId = cookUuid();
+  const stage = {
+    id: id,
+    type: 'cook',
+    title: '',
+    userActionRequired: true,
+    temperatureBulbs: { mode:'wet', wet:{ setpoint:{ celsius: 27, fahrenheit: 80.6 } } },
+    steamGenerators: { mode:'relative-humidity', relativeHumidity:{ setpoint: 60 } },
+    heatingElements: { top:{ on:false }, bottom:{ on:false }, rear:{ on:true } },
+    fan: { speed: 100 },
+    vent: { open: false },
+    timer: { initial: 2400 }
+  };
+  const ok = send({
+    command:'CMD_APO_START', requestId: reqId,
+    payload:{ id: device.id, type:'CMD_APO_START', payload:{
+      cookId: cookId, cookerId: device.id, cookableId:'', title:'Reference proof',
+      type: device.type || 'oven_v1', originSource:'api', cookableType:'manual',
+      stages:[ stage ]
+    } }
+  });
+  if (!ok) return;
+  toast('Sending Anova\u2019s own stage');
+  expect([reqId, cookId], 'The reference stage started — so the fault is in how this app builds a cook',
+                          'The oven refused Anova\u2019s own stage too — the fault is not this app\u2019s payload');
+  go('cook');
 };
 
 $('#btnConnect').onclick = () => {

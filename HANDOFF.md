@@ -291,6 +291,34 @@ coerces types, clamps ranges, caps stage count and always reissues the id. Treat
 it as the trust boundary for anything hand-authored - the editor assumes every
 field exists and would break on a partial recipe otherwise.
 
+## The oven refuses plans that look fine - including Anova's own
+
+**Owner-reported 2026-09-06: custom recipes built in the official Anova app also
+often fail to start on this oven.** Not always; often. That reframes every
+silent refusal in this file. Some of what was chased as an app bug may be the
+oven declining configurations regardless of who sends them, and it means
+"matches what Anova's app sends" is not sufficient evidence that a payload will
+run.
+
+**Owner's hypothesis, untested:** the oven has rules about when the fan must be
+on. Plausible - the rear element is the convection element and running it
+without the fan would be unsafe - but the failing proof recipe now runs the fan
+at 100 with the rear element on, so it does not explain that case.
+
+**Diagnostic shipped:** Setup -> Troubleshooting -> "Send Anova's own proof
+stage" replays the wet stage from
+`fixtures/state-v1-official-anova-multistage.json` field-for-field. It splits
+the question in one tap:
+
+- **It starts** -> the fault is in how this app builds a cook, and the extra
+  fields it sends that the echo does not show (`stepType`, `description`,
+  `rackPosition`, `timerAdded`, `probeAdded`) are the place to look.
+- **It is refused** -> the fault is not this app's payload. Stop editing
+  `stagePair()` and look at oven state, firmware, or token scope.
+
+Caveat: the oven strips fields from the plans it echoes, so the replay contains
+everything Anova's app was *observed* to send, which may be less than it sent.
+
 ## Open items
 
 1. ~~Mid-cook state capture.~~ Done 2026-09-06, see above. Still wanted: a capture
