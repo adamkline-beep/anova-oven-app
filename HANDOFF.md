@@ -313,6 +313,23 @@ Note this was raised early and dismissed on a bad reading - the library file had
 been changed to fan 100 but the owner's *saved copy*, imported before that
 change, still held 25. **Check what is on the phone, not what is in the repo.**
 
+**Owner's fuller rule, now implemented:** the fan must be at 100 whenever the
+**rear element** or **steam** is in use. Physically sensible - the rear element
+is the convection element and steam has to be circulated. `needsFullFan(s)` is
+the single source of truth, used by `stagePair()`, `validate()` and the editor,
+which shows the fan locked with the reason. A stage using only the top and/or
+bottom elements with no steam keeps whatever fan it is given.
+
+**Counter-evidence, unresolved.** The very first successful cook (2026-09-06
+15:54, `fixtures/state-v1-cook-preheat.json`) had the rear element on and echoed
+`fan.speed 25` on its **cook** stage, and the oven accepted the plan. Two
+readings: single-stage plans are validated loosely - independently true, since
+that same plan carried bare uuids and a `stageTransitionType` that a multi-stage
+plan will not accept - or the cook stage would have misbehaved once reached,
+which was never observed because the capture is 5 s into the preheat. Forcing
+the fan is applied anyway: the failure mode is a silent drop, and a faster fan
+is cheap.
+
 **Diagnostic (still shipped, Setup -> Troubleshooting -> "Send Anova's own proof
 stage"): it STARTED, 2026-09-06.** The oven accepts the reference wet stage
 replayed field-for-field, so the payload this app built was at fault, not the

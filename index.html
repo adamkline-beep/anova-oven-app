@@ -967,10 +967,13 @@ function stageForm(s, idx){
 
   // fan / rack / vent
   const f4 = el('div','grid2');
-  if (s.mode === 'wet'){
+  if (needsFullFan(s)){
+    const why = s.mode === 'wet' ? 'sous vide'
+              : (s.rear && s.steam !== 'none') ? 'the rear element and steam'
+              : s.rear ? 'the rear element' : 'steam';
     const ff = el('div','field');
     ff.innerHTML = '<label>Fan speed %</label>' +
-      '<div class="locked">100 &mdash; sous vide always runs the fan at full</div>';
+      '<div class="locked">100 &mdash; ' + why + ' needs a full fan</div>';
     f4.appendChild(ff);
   } else {
     f4.appendChild(numField('Fan speed %', s.fan, v => s.fan = clamp(v,0,100)));
@@ -1073,9 +1076,9 @@ function validate(r){
     }
     if (s.mode === 'wet' && s.steam === 'none')
       errs.push(tag + 'sous vide mode needs steam — set humidity to 100%.');
-    // Not fatal - stagePair() forces it - but an old recipe showing fan 25 and
-    // running at 100 would be a lie, so say so.
-    if (s.mode === 'wet' && s.fan !== 100) s.fan = 100;
+    // Not fatal - stagePair() forces it - but a recipe showing fan 25 while the
+    // oven is sent 100 would be a lie, so bring the saved copy into line.
+    if (needsFullFan(s)) s.fan = 100;
     // Every stage but the last needs something that ends it, or the oven has no
     // way to know when to move on and rejects the whole cook.
     if (i < r.stages.length - 1 && !(s.timer > 0) && !(s.probe > 0))
@@ -1087,6 +1090,13 @@ function validate(r){
 /* ============================================================
    Building and sending the cook
    ============================================================ */
+// The oven wants a full fan whenever the rear element or steam is in play - the
+// rear element is the convection element and steam has to be circulated. Owner's
+// rule, and it matches every silent refusal seen so far. Only sous vide is
+// confirmed on hardware (fan 25 refused, fan 100 ran); the rest is applied
+// because the failure mode is a silent drop and the cost of a faster fan is low.
+const needsFullFan = s => !!s.rear || s.steam !== 'none' || s.mode === 'wet';
+
 function stagePair(s, isLast, withPreheat){
   const c = toC(s), f = c2f(c);
   // Built per stage, not shared: two stages aliasing one object is a trap.
@@ -1100,7 +1110,7 @@ function stagePair(s, isLast, withPreheat){
       userActionRequired:false,
       temperatureBulbs: bulbs(),
       heatingElements: { top:{on:!!s.top}, bottom:{on:!!s.bottom}, rear:{on:!!s.rear} },
-      fan: { speed: clamp(Math.round(s.fan), 0, 100) },
+      fan: { speed: needsFullFan(s) ? 100 : clamp(Math.round(s.fan), 0, 100) },
       vent: { open: !!s.vent },
       rackPosition: s.rack || 3
     };
@@ -1132,10 +1142,6 @@ function stagePair(s, isLast, withPreheat){
     delete cook.stepType; delete cook.description; delete cook.rackPosition;
     delete cook.timerAdded; delete cook.probeAdded;
     cook.userActionRequired = true;
-    // Sous vide is refused at anything less than a full fan, silently. Confirmed
-    // on hardware 2026-09-06: the same stage at fan 25 is dropped, at fan 100 it
-    // runs. The exact threshold is unknown, so use the one known-good value.
-    cook.fan = { speed: 100 };
   }
 
   if (!withPreheat) return [cook];
