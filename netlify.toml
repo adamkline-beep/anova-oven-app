@@ -1,0 +1,15 @@
+# Static site: no build step, the repo root is what gets served.
+[build]
+  publish = "."
+
+# The service worker must never be served stale, or the phone keeps running an
+# old app shell and never notices a deploy.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
