@@ -268,9 +268,11 @@ oven at temperature until someone presses its panel.
 1. ~~Mid-cook state capture.~~ Done 2026-09-06, see above. Still wanted: a capture
    **at the preheat -> cook transition** (does `stageTransitionPendingUserAction`
    flip to true?) and one from a genuinely multi-stage recipe (4+ API stages).
-2. **Probe cook on hardware.** Confirms `temperatureProbe` vs `probe` field
-   naming. Still untested, and now the largest untested path in the app - the
-   probe branch of `stagePair()` has never run against the oven.
+2. **Probe cook on hardware. BLOCKED - the owner's probe broke (2026-09-06).**
+   The probe branch of `stagePair()` has never run against the oven and cannot
+   be tested until the probe is replaced. It sends `temperatureProbe`; the SDK
+   docs call it `probe` in one example. Treat the whole probe path as unverified,
+   and do not assume a probe recipe works just because timed recipes do.
 3. **Which id `processedCommandIds` echoes** — requestId or cookId.
 4. Possible features: notification when a stage ends, cook history,
    per-recipe rack reminders. (Screen wake lock: done 2026-09-06.)
