@@ -1111,6 +1111,16 @@ function stagePair(s, isLast, withPreheat){
     // forever has no exit condition, and validate() rejects that case.
     cook.userActionRequired = true;
   }
+  // A sous vide stage is sent in exactly the shape the oven accepted from
+  // Anova's own app - nothing more. The extra fields below are provably fine on
+  // a dry stage (timed two-stage dry recipes run with them) but a wet stage
+  // carrying them is refused, so they come off here rather than everywhere.
+  if (s.mode === 'wet'){
+    delete cook.stepType; delete cook.description; delete cook.rackPosition;
+    delete cook.timerAdded; delete cook.probeAdded;
+    cook.userActionRequired = true;
+  }
+
   if (!withPreheat) return [cook];
   const pre = base(); pre.type = 'preheat';
   // The oven pairs a preheat to its cook stage BY ID: a running official Anova

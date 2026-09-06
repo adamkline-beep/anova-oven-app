@@ -305,19 +305,22 @@ on. Plausible - the rear element is the convection element and running it
 without the fan would be unsafe - but the failing proof recipe now runs the fan
 at 100 with the rear element on, so it does not explain that case.
 
-**Diagnostic shipped:** Setup -> Troubleshooting -> "Send Anova's own proof
-stage" replays the wet stage from
-`fixtures/state-v1-official-anova-multistage.json` field-for-field. It splits
-the question in one tap:
+**Diagnostic (still shipped, Setup -> Troubleshooting -> "Send Anova's own proof
+stage"): it STARTED, 2026-09-06.** The oven accepts the reference wet stage
+replayed field-for-field, so the payload this app built was at fault, not the
+oven. Keep the button - it is the fastest way to re-split app-vs-oven if
+something else starts failing.
 
-- **It starts** -> the fault is in how this app builds a cook, and the extra
-  fields it sends that the echo does not show (`stepType`, `description`,
-  `rackPosition`, `timerAdded`, `probeAdded`) are the place to look.
-- **It is refused** -> the fault is not this app's payload. Stop editing
-  `stagePair()` and look at oven state, firmware, or token scope.
+**What that isolated.** A wet stage this app built carried five fields the
+reference does not - `stepType`, `description`, `rackPosition`, `timerAdded`,
+`probeAdded` - and `userActionRequired: false` where the reference has `true`.
+All of those are provably fine on a **dry** stage: timed two-stage dry recipes
+run with every one of them. So a wet stage is now emitted in exactly the
+reference shape and a dry stage is left alone.
 
-Caveat: the oven strips fields from the plans it echoes, so the replay contains
-everything Anova's app was *observed* to send, which may be less than it sent.
+**Which of the six actually mattered is unknown.** Bisecting would cost the
+owner a kitchen trip per field and buys nothing while both paths work. If it
+ever matters, add them back one at a time to a wet stage.
 
 ## Open items
 

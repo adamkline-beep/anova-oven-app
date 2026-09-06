@@ -1,5 +1,5 @@
 // Cache the app shell so the oven controls open instantly and work on a weak kitchen signal.
-const CACHE = 'oven-v12';
+const CACHE = 'oven-v13';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
