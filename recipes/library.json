@@ -4,9 +4,21 @@
     {
       "name": "Proof dough",
       "stages": [
-        { "temp": 80, "unit": "F", "mode": "wet", "steam": "rh", "steamVal": 60,
-          "top": false, "bottom": false, "rear": true,
-          "fan": 25, "vent": false, "rack": 3, "timer": 3600, "probe": 0 }
+        {
+          "temp": 80,
+          "unit": "F",
+          "mode": "wet",
+          "steam": "rh",
+          "steamVal": 60,
+          "top": false,
+          "bottom": false,
+          "rear": true,
+          "fan": 100,
+          "vent": false,
+          "rack": 3,
+          "timer": 3600,
+          "probe": 0
+        }
       ]
     }
   ]

@@ -1125,10 +1125,14 @@ function runRecipe(r){
   const errs = validate(r);
   if (errs.length){ fail('Not sent — ' + errs.join('  ')); return; }
 
-  // A preheat before every stage, paired to it by id. This is what the oven's
-  // own app does; the layout was never the problem and is no longer a choice.
+  // A preheat before every DRY stage, paired to it by id. Sous vide stages get
+  // no preheat: the oven holds a wet-bulb temperature and there is nothing to
+  // preheat to. The official Anova plan captured on this oven does exactly this
+  // - its wet proof stage is a bare cook, its two dry stages both have partners.
   const stages = [];
-  r.stages.forEach((s, i) => stages.push(...stagePair(s, i === r.stages.length - 1, true)));
+  r.stages.forEach((s, i) => stages.push(
+    ...stagePair(s, i === r.stages.length - 1, s.mode !== 'wet')
+  ));
   const reqId = uuid(), cookId = cookUuid();
 
   const ok = send({

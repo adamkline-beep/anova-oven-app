@@ -250,7 +250,14 @@ eyeballing. Ask Claude to rebuild the harness; the pattern is:
 
 ## The multi-stage payload, as confirmed working
 
-For each user stage, in order, emit a pair:
+**Sous vide (`mode: "wet"`) stages get NO preheat** - just a bare `cook`. The
+oven holds a wet-bulb temperature and there is nothing to preheat to; the
+official plan's wet proof stage has no partner while both its dry stages do.
+Emitting a preheat for a wet stage makes the oven refuse the cook, silently,
+exactly like the multi-stage id bug. Found 2026-09-06 when a single-stage proof
+recipe would not start.
+
+For each **dry** user stage, in order, emit a pair:
 
 ```
 preheat: id "<uuid>-preheat", type "preheat", no timer/probe fields
@@ -258,6 +265,8 @@ cook:    id "<uuid>",         type "cook",    timerAdded/probeAdded + timer{init
 ```
 
 Both halves carry the same temperature, elements, fan, vent, rack and steam.
+A proof-then-bake recipe therefore compiles to `cook, preheat, cook, preheat,
+cook` - the exact shape of the captured official plan.
 `cookId` is `android-<uuid>`; **stage ids are bare**. No `stageTransitionType`,
 no `timer.startType`, no `timerStartOnDetect` anywhere. The last stage may set
 `userActionRequired: true` when it has neither timer nor probe, which parks the
