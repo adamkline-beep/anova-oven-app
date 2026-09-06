@@ -94,7 +94,37 @@ payload.state.cook              present only during a cook (see below)
 - `relativeHumidity.current` is live even when `steamGenerators.mode` is `"idle"`.
 - `uiFirmwareVersion` is `"0.0.0"` on this oven. Normal; not a fault.
 
-### Active cook (`payload.state.cook`) — from SDK docs, NOT yet verified on this oven
+### Active cook (`payload.state.cook`) — VERIFIED 2026-09-06
+
+Real capture in `fixtures/state-v1-cook-preheat.json` (one user stage, 400 F dry,
+no timer, no probe, 5 s into preheat). Corrections to the doc-derived shape below:
+
+- **`originSource` and `type` are NOT present** on the cook object. Only:
+  `stages, activeStageSecondsElapsed, activeStageId, cookId,
+  stageTransitionPendingUserAction, secondsElapsed, activeStageIndex`.
+- **The oven strips the stages it echoes back.** Sent fields `stepType`,
+  `description`, `rackPosition`, `stageTransitionType`, `timerAdded`,
+  `probeAdded`, `timerStartOnDetect` are all absent from the echo. Echoed stages
+  carry only `id, type, title, userActionRequired, temperatureBulbs,
+  heatingElements, fan, vent` (plus `timer`/`temperatureProbe` when set).
+  **Do not use the echo to verify what was sent.**
+- **The oven rewrites the preheat stage's fan to 100** regardless of the stage
+  fan. In the capture the preheat echoes `fan.speed 100` and the cook `25`, from
+  a recipe whose two stages `stagePair()` builds with identical fan.
+- `timer.mode` is `"idle"` during a running cook when no timer was set.
+- `temperatureProbe` is `{connected:false}` alone when unplugged — no `current`
+  or `setpoint` keys. Code must not assume they exist.
+- Live `dry.setpoint` reads 399.99 F for a requested 400. Round for display.
+- `secondsElapsed` and `activeStageSecondsElapsed` are equal during stage 0.
+- New `systemInfo` fields: `firmwareUpdatedTimestamp`, `uiHardwareVersion`
+  (`"UI_ORIGINAL_2"`), `powerHertz`, `lastConnectedTimestamp`,
+  `lastDisconnectedTimestamp`. `state.updatedTimestamp` sits beside `nodes`.
+
+**`processedCommandIds` (open item 3):** the `cookId` of the running cook is NOT
+in the list, which points at `requestId` being the echoed id. Evidence, not
+proof — it is not yet confirmed that this cook was started from this app.
+
+### Doc-derived shape, superseded by the above
 
 ```
 {cookId, originSource, type, stages:[...], activeStageId, activeStageIndex,
@@ -212,8 +242,9 @@ eyeballing. Ask Claude to rebuild the harness; the pattern is:
 
 ## Open items
 
-1. **Mid-cook state capture.** Setup → Show raw oven data while a multi-stage cook
-   is running. Pins down the `cook` object, `timer.mode` values, and stage transitions.
+1. ~~Mid-cook state capture.~~ Done 2026-09-06, see above. Still wanted: a capture
+   **at the preheat -> cook transition** (does `stageTransitionPendingUserAction`
+   flip to true?) and one from a genuinely multi-stage recipe (4+ API stages).
 2. **Probe cook on hardware.** Confirms `temperatureProbe` vs `probe` field naming.
 3. **Which id `processedCommandIds` echoes** — requestId or cookId.
 4. Possible features: notification when a stage ends, cook history,
@@ -232,6 +263,19 @@ toggled under Setup -> Screen; the buttons disable themselves when
 Verified with a JavaScriptCore harness driving the extracted functions against a
 stubbed `navigator.wakeLock`. **The DOM wiring - the Setup toggle - has not been
 exercised in a browser.**
+
+## Known bugs found from the 2026-09-06 capture
+
+1. **A cook with no timer and no probe silently waits for the oven panel.**
+   `stagePair()` sets `userActionRequired:true` and `stageTransitionType:'manual'`
+   on the cook stage in that case, so the oven finishes preheating and then holds,
+   waiting for a press on its own front panel. The app never reads
+   `stageTransitionPendingUserAction`, so it just keeps saying "Preheating" and
+   looks hung. Needs surfacing in the UI at minimum.
+2. **Stage counts are API stages, not user stages.** `renderCook()` renders
+   `stage (i+1) of stages.length`, so a one-stage recipe reads "stage 1 of 2"
+   because every user stage compiles to a preheat/cook pair. Should map back to
+   user stages (`i/2+1` of `length/2`).
 
 ## Things not to break
 

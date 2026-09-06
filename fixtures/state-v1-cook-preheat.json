@@ -1,0 +1,90 @@
+{
+  "cookerId": "0123c79e76ceee3401",
+  "type": "oven_v1",
+  "state": {
+    "nodes": {
+      "waterTank": { "empty": false },
+      "lamp": { "on": true, "preference": "on", "failed": false },
+      "temperatureBulbs": {
+        "dryTop": { "overheated": false, "current": { "fahrenheit": 140.92, "celsius": 60.51 } },
+        "dry": { "current": { "celsius": 60.51, "fahrenheit": 140.92 }, "setpoint": { "fahrenheit": 399.99, "celsius": 204.44 } },
+        "dryBottom": { "current": { "celsius": 50.5, "fahrenheit": 122.91 }, "overheated": false },
+        "mode": "dry",
+        "wet": { "current": { "celsius": 32.61, "fahrenheit": 90.69 }, "doseFailed": false, "dosed": false }
+      },
+      "steamGenerators": {
+        "boiler": { "watts": 0, "overheated": false, "dosed": false, "descaleRequired": false, "failed": false, "celsius": 25.08 },
+        "evaporator": { "celsius": 27.14, "overheated": false, "watts": 0, "failed": false },
+        "relativeHumidity": { "current": 29 },
+        "mode": "idle"
+      },
+      "fan": { "failed": false, "speed": 100 },
+      "heatingElements": {
+        "rear": { "watts": 1600, "failed": false, "on": true },
+        "top": { "failed": false, "watts": 0, "on": false },
+        "bottom": { "watts": 0, "failed": false, "on": false }
+      },
+      "temperatureProbe": { "connected": false },
+      "timer": { "mode": "idle", "initial": 0, "current": 0 },
+      "userInterfaceCircuit": { "communicationFailed": false },
+      "vent": { "open": false },
+      "door": { "closed": true }
+    },
+    "systemInfo": {
+      "firmwareUpdatedTimestamp": "2024-12-04T07:03:36Z",
+      "uiHardwareVersion": "UI_ORIGINAL_2",
+      "powerMains": 120,
+      "online": true,
+      "powerHertz": 60,
+      "uiFirmwareVersion": "0.0.0",
+      "firmwareVersion": "2.1.16",
+      "triacsFailed": false,
+      "lastConnectedTimestamp": "2026-09-06T15:07:45Z",
+      "hardwareVersion": "120V1",
+      "lastDisconnectedTimestamp": "2026-09-05T22:47:14Z"
+    },
+    "cook": {
+      "stages": [
+        {
+          "temperatureBulbs": { "dry": { "setpoint": { "celsius": 204.44, "fahrenheit": 400 } }, "mode": "dry" },
+          "id": "08e26061-765e-4e09-b1cf-e78cf5add176",
+          "type": "preheat",
+          "vent": { "open": false },
+          "heatingElements": { "bottom": { "on": false }, "rear": { "on": true }, "top": { "on": false } },
+          "title": "",
+          "userActionRequired": false,
+          "fan": { "speed": 100 }
+        },
+        {
+          "type": "cook",
+          "heatingElements": { "top": { "on": false }, "rear": { "on": true }, "bottom": { "on": false } },
+          "fan": { "speed": 25 },
+          "temperatureBulbs": { "dry": { "setpoint": { "celsius": 204.44, "fahrenheit": 400 } }, "mode": "dry" },
+          "vent": { "open": false },
+          "title": "",
+          "userActionRequired": true,
+          "id": "183af6fe-2e60-43b6-bdd7-251e1c845218"
+        }
+      ],
+      "activeStageSecondsElapsed": 5,
+      "activeStageId": "08e26061-765e-4e09-b1cf-e78cf5add176",
+      "cookId": "7eb889c6-403c-4971-a070-bb6ead247ea1",
+      "stageTransitionPendingUserAction": false,
+      "secondsElapsed": 5,
+      "activeStageIndex": 0
+    },
+    "state": {
+      "processedCommandIds": [
+        "7d1a9b22-9aca-4ac1-afd4-1f9a217faf49","5c92e98c-b999-4fd3-b6d2-87043b8e9780",
+        "7e0e2bfd-c7e7-49cd-ac62-da65dcd92917","3b4356bf-da2e-4ccb-ac29-4e1d41252ef5",
+        "3ec2547c-4eab-4268-93c1-8f31fe4f941f","d7040240-0abb-4592-b0b8-7416305c629e",
+        "127fe29f-56f4-4f32-b4ac-470356d2fc29","91998a61-3c6e-41a2-82bb-b08b7b640132",
+        "01afcead-9c20-4efa-911b-061ac1d9f2f3","ab4be459-cf08-4e34-ad52-a9f3d5080c0c"
+      ],
+      "mode": "cook",
+      "temperatureUnit": "F"
+    },
+    "updatedTimestamp": "2026-09-06T15:54:06.735Z",
+    "version": 1
+  }
+}
