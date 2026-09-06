@@ -88,7 +88,12 @@
           "probe": 0,
           "hold": false
         }
-      ]
+      ],
+      "servings": "9 rolls, 9x9 pan or 10in cast iron",
+      "ingredients": "TANGZHONG\n20g bread flour\n50g whole milk\n50g water\n\nDOUGH\n330g bread flour\n7g instant yeast\n35g sugar\n6g fine sea salt\n100g whole milk, lukewarm\n1 egg + 1 yolk, room temperature\n55g unsalted European butter, softened\n\nPAN AND TOPPING\n30g butter, melted, for the pan\n30g butter, melted, for brushing after\nFlaky Maldon salt",
+      "steps": "1. Tangzhong. Whisk flour, milk and water in a small pan over medium-low heat 2-3 min to a thick paste. Cool 5 min to lukewarm.\n\n2. Dough. Combine flour, sugar, salt and yeast. Add milk, egg, yolk and the tangzhong. Mix low 2 min, then medium-low 5 min. Add butter a tablespoon at a time, then knead 8-10 min to the windowpane test.\n\n3. First rise. Oiled bowl, covered. Use the Proof dough recipe: 80F at 60% humidity, about 60 min, until doubled.\n\n4. Shape. Butter the pan with 30g melted butter. Divide into 9 pieces of 70-75g, roll each tight, arrange 3x3.\n\n5. Second proof on the counter, covered, 45-60 min, while the oven and steel heat. Pull it slightly under-proofed - puffy, not fully doubled.\n\n6. Bake. Send this recipe with the baking steel on rack 2. It soaks the steel for 45 min, then holds. Set the pan on the steel and press start on the oven.\n\n7. Finish. Brush with the remaining 30g melted butter the moment they come out, scatter Maldon salt, rest 10 min in the pan.",
+      "notes": "2026-09-05 bake: good crumb, but the bottom was not crisp and the top was overcooked. Cause was the rear element - convection at 375F for 20+ min browns the crowns. This version drops it: bottom element only for the long middle, colour from a short top+bottom finish, and a preheated steel under the pan for the base.\n\nNext time: check colour at the start of stage 4 and cut it short if they are already there. Target 195-200F internal (needs the probe).",
+      "usesOven": true
     }
   ]
 }

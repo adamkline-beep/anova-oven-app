@@ -119,6 +119,10 @@ main{padding:var(--pad);max-width:640px;margin:0 auto}
   font-variant-numeric:tabular-nums;line-height:1;margin-top:6px
 }
 .clock small{font-size:15px;color:var(--dim);font-family:'Barlow',sans-serif;font-weight:400;margin-left:8px}
+.rsec{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ember);
+  margin:18px 0 7px;font-weight:600}
+.rbody{white-space:pre-wrap;line-height:1.5;font-size:14.5px;color:var(--text)}
+.rbody.mono{font-variant-numeric:tabular-nums}
 .locked{
   padding:11px 12px;border-radius:10px;background:var(--oven);
   border:1px dashed var(--line);color:var(--dim);font-size:13.5px}
@@ -288,8 +292,32 @@ pre{
     <label for="rName">Recipe name</label>
     <input id="rName" placeholder="Roast chicken" autocomplete="off">
   </div>
+  <div class="field">
+    <label for="rServes">Makes</label>
+    <input id="rServes" placeholder="9 rolls" autocomplete="off">
+  </div>
+  <div class="field">
+    <label for="rIng">Ingredients</label>
+    <textarea id="rIng" class="ta" placeholder="330g bread flour&#10;7g instant yeast&#10;35g sugar"></textarea>
+  </div>
+  <div class="field">
+    <label for="rSteps">Method</label>
+    <textarea id="rSteps" class="ta" placeholder="1. Cook the tangzhong&#10;2. Knead until it passes the windowpane test"></textarea>
+  </div>
+  <div class="field">
+    <label for="rNotes">Notes</label>
+    <textarea id="rNotes" class="ta" style="min-height:80px" placeholder="What to change next time"></textarea>
+  </div>
+
+  <h2 class="sec">Oven</h2>
+  <div class="seg" id="ovenSeg">
+    <button data-o="true" aria-pressed="true">Cooks in the oven</button>
+    <button data-o="false" aria-pressed="false">No oven</button>
+  </div>
+  <div class="hint" id="ovenHint">Stages below are sent to the oven. Turn this off for a recipe the oven has no part in.</div>
   <div id="stages"></div>
   <button class="btn slim" id="btnAddStage" style="margin-top:16px">Add another stage</button>
+  <div id="noOvenNote" class="hint" style="display:none">This recipe has no oven programme &mdash; just ingredients, method and notes.</div>
   <div id="editErr"></div>
   <button class="btn go" id="btnSendNow" style="margin-top:18px;display:none">Send to oven</button>
   <button class="btn go" id="btnSave" style="margin-top:18px">Save recipe</button>
@@ -756,7 +784,7 @@ function drawStrip(n, u){
 
 let quickSig = null;
 function renderQuickList(force){
-  const rs = store.recipes;
+  const rs = store.recipes.filter(r => r.usesOven !== false);
   const sig = store.unit + '|' + rs.map(r => r.id + ':' + r.name).join(',');
   if (!force && sig === quickSig) return;
   quickSig = sig;
@@ -781,7 +809,10 @@ function blankStage(){
            top:false, bottom:false, rear:true, fan:100, vent:false,
            rack:3, timer:1800, probe:0, hold:false };
 }
-function blankRecipe(){ return { id: uuid(), name:'', stages:[blankStage()] }; }
+function blankRecipe(){
+  return { id: uuid(), name:'', servings:'', ingredients:'', steps:'', notes:'',
+           usesOven: true, stages:[blankStage()] };
+}
 
 // Anything arriving from outside the app - a paste, a file, the repo library -
 // goes through here. Missing fields fall back to the blank stage, everything is
@@ -791,9 +822,16 @@ function normalizeRecipe(r){
   const num = (v, d) => Number.isFinite(+v) ? +v : d;
   r = r || {};
   const src = Array.isArray(r.stages) && r.stages.length ? r.stages : [blankStage()];
+  const txt = (v, n) => String(v == null ? '' : v).slice(0, n);
   return {
     id: uuid(),
     name: String(r.name || 'Untitled').trim().slice(0, 60) || 'Untitled',
+    servings: txt(r.servings, 40).trim(),
+    ingredients: txt(r.ingredients, 8000),
+    steps: txt(r.steps, 20000),
+    notes: txt(r.notes, 8000),
+    // Recipes predating this field are all oven programmes.
+    usesOven: r.usesOven === undefined ? true : !!r.usesOven,
     stages: src.slice(0, 12).map(s => {
       s = s || {};
       const unit = s.unit === 'C' ? 'C' : 'F';
@@ -836,6 +874,13 @@ function addRecipes(list, source){
 }
 
 function summarize(r){
+  if (r.usesOven === false){
+    const bits = [];
+    if (r.servings) bits.push(r.servings);
+    const ing = (r.ingredients||'').split('\n').filter(l => l.trim()).length;
+    if (ing) bits.push(ing + ' ingredient' + (ing===1?'':'s'));
+    return bits.join('  ·  ') || 'No oven';
+  }
   return (r.stages||[]).map(s => {
     const t = store.unit === 'F' ? Math.round(toF(s)) : Math.round(toC(s));
     let x = t + '°' + store.unit + (s.mode === 'wet' ? ' sous vide' : '');
@@ -860,6 +905,8 @@ function renderRecipes(){
     c.innerHTML = '<div class="nm">' + esc(r.name || 'Untitled') + '</div>' +
                   '<div class="sub">' + esc(summarize(r)) + '</div>' +
                   '<div class="go"></div>';
+    const view = el('button'); view.textContent = 'View';
+    view.onclick = () => showRecipe(r);
     const run = el('button'); run.className = 'primary'; run.textContent = 'Send to oven';
     run.onclick = () => confirmRun(r);
     const ed = el('button'); ed.textContent = 'Edit';
@@ -871,9 +918,41 @@ function renderRecipes(){
       copy.id = uuid(); copy.name = r.name + ' copy';
       rs2.splice(i+1, 0, copy); store.recipes = rs2; renderAll(); toast('Duplicated');
     };
-    c.querySelector('.go').append(run, ed, cp);
+    if (r.usesOven === false) c.querySelector('.go').append(view, ed, cp);
+    else c.querySelector('.go').append(view, run, ed, cp);
     box.appendChild(c);
   });
+}
+
+// Read view: ingredients, method, notes, and the oven programme if there is one.
+function showRecipe(r){
+  const inner = $('#sheetInner'); inner.innerHTML = '';
+  const h = el('h2'); h.textContent = r.name || 'Untitled';
+  inner.appendChild(h);
+  if (r.servings){ const p = el('p'); p.textContent = 'Makes ' + r.servings; inner.appendChild(p); }
+
+  const section = (title, body, mono) => {
+    if (!body || !body.trim()) return;
+    const t = el('h3','rsec'); t.textContent = title;
+    const d = el('div', mono ? 'rbody mono' : 'rbody'); d.textContent = body.trim();
+    inner.append(t, d);
+  };
+  section('Ingredients', r.ingredients, true);
+  section('Method', r.steps);
+  section('Notes', r.notes);
+
+  if (r.usesOven !== false){
+    const t = el('h3','rsec'); t.textContent = 'In the oven';
+    const d = el('div','rbody'); d.textContent = summarize(r);
+    inner.append(t, d);
+    const run = el('button','btn go'); run.textContent = 'Send to oven'; run.style.marginTop = '14px';
+    run.onclick = () => { closeSheet(); confirmRun(r); };
+    inner.appendChild(run);
+  }
+  const cl = el('button','btn slim'); cl.textContent = 'Close'; cl.style.marginTop = '10px';
+  cl.onclick = closeSheet;
+  inner.appendChild(cl);
+  $('#sheet').classList.add('on');
 }
 
 /* ---------- editor ---------- */
@@ -881,6 +960,12 @@ function openEditor(i){
   editIdx = i;
   editing = i < 0 ? blankRecipe() : JSON.parse(JSON.stringify(store.recipes[i]));
   $('#rName').value = editing.name || '';
+  $('#rServes').value = editing.servings || '';
+  $('#rIng').value = editing.ingredients || '';
+  $('#rSteps').value = editing.steps || '';
+  $('#rNotes').value = editing.notes || '';
+  if (editing.usesOven === undefined) editing.usesOven = true;
+  setOvenMode(editing.usesOven);
   $('#btnDelete').style.display = i < 0 ? 'none' : 'block';
   $('#btnSendNow').style.display = 'none';
   $('#btnSave').textContent = 'Save recipe';
@@ -1081,6 +1166,7 @@ function selField(label, opts, val, on){
 function validate(r){
   const errs = [];
   if (!r.name.trim()) errs.push('Give the recipe a name.');
+  if (!r.usesOven) return errs;   // nothing else to check: no oven programme
   r.stages.forEach((s, i) => {
     const tag = r.stages.length > 1 ? 'Stage ' + (i+1) + ': ' : '';
     const on = ['top','bottom','rear'].filter(k => s[k]).length;
@@ -1355,6 +1441,10 @@ $('#rName').oninput = e => editing.name = e.target.value;
 
 $('#btnSendNow').onclick = () => {
   editing.name = $('#rName').value || 'Manual cook';
+  editing.servings = $('#rServes').value;
+  editing.ingredients = $('#rIng').value;
+  editing.steps = $('#rSteps').value;
+  editing.notes = $('#rNotes').value;
   const errs = validate(editing);
   if (errs.length){
     $('#editErr').innerHTML = '<div class="err">' + errs.map(esc).join('<br>') + '</div>';
@@ -1364,8 +1454,25 @@ $('#btnSendNow').onclick = () => {
   confirmRun(editing);
 };
 
+// Show or hide the oven half of the editor.
+function setOvenMode(on){
+  editing.usesOven = !!on;
+  document.querySelectorAll('#ovenSeg button').forEach(b =>
+    b.setAttribute('aria-pressed', String((b.dataset.o === 'true') === !!on)));
+  $('#stages').style.display = on ? 'block' : 'none';
+  $('#btnAddStage').style.display = on ? 'block' : 'none';
+  $('#ovenHint').style.display = on ? 'block' : 'none';
+  $('#noOvenNote').style.display = on ? 'none' : 'block';
+}
+document.querySelectorAll('#ovenSeg button').forEach(b =>
+  b.onclick = () => setOvenMode(b.dataset.o === 'true'));
+
 $('#btnSave').onclick = () => {
   editing.name = $('#rName').value;
+  editing.servings = $('#rServes').value;
+  editing.ingredients = $('#rIng').value;
+  editing.steps = $('#rSteps').value;
+  editing.notes = $('#rNotes').value;
   const errs = validate(editing);
   if (errs.length){
     $('#editErr').innerHTML = '<div class="err">' + errs.map(esc).join('<br>') + '</div>';

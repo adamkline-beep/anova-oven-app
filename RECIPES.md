@@ -9,10 +9,23 @@ offers, it never syncs.
 ## Shape
 
 ```json
-{ "recipes": [ { "name": "...", "stages": [ { ...stage... } ] } ] }
+{ "recipes": [ {
+  "name": "...",
+  "servings": "9 rolls",
+  "ingredients": "one per line, blank lines and CAPS headings are fine",
+  "steps": "free text, numbered however you like",
+  "notes": "what to change next time",
+  "usesOven": true,
+  "stages": [ { ...stage... } ]
+} ] }
 ```
 
-Omit `id`; the app always issues a fresh one on import.
+Omit `id`; the app always issues a fresh one on import. `ingredients`, `steps`
+and `notes` are plain text shown as written - no parsing, no format to fight.
+
+`usesOven: false` makes a recipe that is only food: no stages, no oven
+validation, no Send button. It defaults to `true`, so every recipe written
+before this field existed is still an oven programme.
 
 ## A stage
 
