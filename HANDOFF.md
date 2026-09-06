@@ -184,12 +184,40 @@ echoes has not been pinned down, so it watches for both.
 
 ## v1 hardware limits enforced by the app
 
+Now taken from the **Quick Start Guide**, a copy of which is in
+`docs/anova-quick-start-guide.pdf`. Read it before guessing at a constraint -
+several things chased experimentally today are stated plainly in it.
+
 | Mode | Range |
 |---|---|
-| Dry | 75–482 °F / 25–250 °C |
-| Dry, bottom element only | 75–356 °F / 25–180 °C |
-| Wet (sous vide) | 75–212 °F / 25–100 °C |
+| Dry (sous vide off) | 77–482 °F / 25–250 °C |
+| Dry, bottom element only | 77–356 °F / 25–180 °C |
+| Wet (sous vide on) | 77–212 °F / 25–100 °C |
 | Probe | 33–212 °F / 1–100 °C |
+
+**The floor was wrong until 2026-09-06** - the app advertised 75 °F where the
+oven's is 77 °F (25 °C). The Celsius check also carried a 0.6 °C tolerance, over
+a degree Fahrenheit, which let 76 °F and 483 °F through; it is 0.05 now, since
+every Fahrenheit bound is an exact conversion of its Celsius one.
+
+Other constraints the guide states outright:
+
+- **"The convection fan will always run at high speed while the rear element is
+  in use."** This is the owner's fan rule, in Anova's own words, and it is why a
+  sous vide stage at fan 25 is refused - sous vide runs on the rear element.
+  The guide says nothing about steam requiring the fan; `needsFullFan()` forces
+  it there too on the owner's report, which is weaker evidence.
+- Elements: top and rear 1600 W to 482 °F, bottom 700 W to 356 °F.
+- **Five tray positions**, not three. The app offered 1-3 until 2026-09-06.
+- **Steam percentage changes meaning at 212 °F / 100 °C.** At or below, the
+  figure is relative humidity and the boiler fires only as needed; above, steam
+  is generated continuously and the oven does not measure humidity at all. So a
+  `relative-humidity` setpoint above 212 °F cannot be honoured, and `validate()`
+  now rejects it and points at steam percentage instead.
+- The oven cannot dehumidify below ambient, so a low humidity target may be
+  unreachable in a humid kitchen. Not enforced; nothing to enforce.
+- Sous vide never browns. Finish with a separate non-sous-vide stage at high
+  heat - which is exactly what a multi-stage recipe is for.
 
 The oven rejects **all three heating elements on** and **all three off**. Sous
 vide mode requires steam. All of this is enforced in `validate()` before sending.

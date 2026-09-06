@@ -43,7 +43,12 @@ breaking the editor. Write them all anyway; the defaults are not obvious.
   stages - but write 100 anyway so the file reads truthfully. Only a stage using
   the top and/or bottom elements with no steam has a fan you can choose.
 - `wet` mode requires steam, and caps at 212 F / 100 C.
-- Dry: 75-482 F. Dry with **only** the bottom element: 75-356 F.
+- Dry: 77-482 F. Dry with **only** the bottom element: 77-356 F. The floor is
+  77 F / 25 C, not 75.
+- **Above 212 F a humidity target is meaningless** - the oven generates steam
+  continuously and stops measuring humidity. Use `"steam": "pct"` there and
+  `"rh"` only at or below 212 F.
+- Rack positions run **1-5**.
 - **Every stage but the last needs a `timer` or a `probe`**, or the oven has no
   way to know when to move on and refuses the whole cook.
 - A last stage with neither parks the oven at temperature until someone presses

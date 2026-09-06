@@ -387,10 +387,14 @@ const store = {
 };
 
 /* ---------- oven limits (v1) ---------- */
+// Straight from the Quick Start Guide: sous vide on, 77-212 F / 25-100 C;
+// sous vide off, 77-482 F / 25-250 C. The bottom element is 700 W and caps at
+// 356 F / 180 C, the top and rear are 1600 W and cap at 482 F / 250 C. The food
+// probe reads to 212 F / 100 C.
 const LIM = {
-  dry:       { c:[25,250], f:[75,482] },
-  dryBottom: { c:[25,180], f:[75,356] },   // v1 caps lower with bottom element only
-  wet:       { c:[25,100], f:[75,212] },
+  dry:       { c:[25,250], f:[77,482] },
+  dryBottom: { c:[25,180], f:[77,356] },   // bottom element alone is the weak one
+  wet:       { c:[25,100], f:[77,212] },
   probe:     { c:[ 1,100], f:[33,212] }
 };
 const bounds = lim => store.unit === 'F' ? lim.f : lim.c;
@@ -805,7 +809,7 @@ function normalizeRecipe(r){
         rear: s.rear === undefined ? true : !!s.rear,
         fan: clamp(Math.round(num(s.fan, 100)), 0, 100),
         vent: !!s.vent,
-        rack: clamp(Math.round(num(s.rack, 3)), 1, 3),
+        rack: clamp(Math.round(num(s.rack, 3)), 1, 5),
         timer: Math.max(0, Math.round(num(s.timer, 0))),
         probe: Math.max(0, Math.round(num(s.probe, 0)))
       };
@@ -978,7 +982,7 @@ function stageForm(s, idx){
   } else {
     f4.appendChild(numField('Fan speed %', s.fan, v => s.fan = clamp(v,0,100)));
   }
-  f4.appendChild(selField('Rack position', ['1','2','3'], String(s.rack), v => s.rack = parseInt(v)));
+  f4.appendChild(selField('Rack position', ['1','2','3','4','5'], String(s.rack), v => s.rack = parseInt(v)));
   b.appendChild(f4);
 
   const f5 = el('div','field'); f5.innerHTML = '<label>Vent</label>';
@@ -1066,7 +1070,10 @@ function validate(r){
     if (on === 3) errs.push(tag + 'the oven will not accept all three heating elements at once.');
     const c = toC(s);
     const lim = s.mode === 'wet' ? LIM.wet : (onlyBottom(s) ? LIM.dryBottom : LIM.dry);
-    if (c < lim.c[0] - 0.6 || c > lim.c[1] + 0.6){
+    // The Fahrenheit bounds are exact conversions of the Celsius ones (77/25,
+    // 212/100, 356/180, 482/250), so only floating-point slack is needed. The
+    // old 0.6 C tolerance was over a degree F and let 76 and 483 through.
+    if (c < lim.c[0] - 0.05 || c > lim.c[1] + 0.05){
       const bd = bounds(lim);
       errs.push(tag + 'temperature must be between ' + bd[0] + ' and ' + bd[1] + '°' + store.unit + '.');
     }
@@ -1076,6 +1083,10 @@ function validate(r){
     }
     if (s.mode === 'wet' && s.steam === 'none')
       errs.push(tag + 'sous vide mode needs steam — set humidity to 100%.');
+    // Above 212 F / 100 C the oven generates steam continuously and stops
+    // measuring humidity at all, so a humidity target cannot be honoured.
+    if (s.steam === 'rh' && toC(s) > 100)
+      errs.push(tag + 'above 212°F the oven cannot hold a humidity target — use steam percentage instead.');
     // Not fatal - stagePair() forces it - but a recipe showing fan 25 while the
     // oven is sent 100 would be a lie, so bring the saved copy into line.
     if (needsFullFan(s)) s.fan = 100;
