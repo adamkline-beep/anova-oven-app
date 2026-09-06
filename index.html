@@ -359,9 +359,8 @@ pre{
 
 const $ = s => document.querySelector(s);
 const el = (t, c) => { const n = document.createElement(t); if (c) n.className = c; return n; };
-// Anova's own clients prefix cookId and stage ids with the platform, and the
-// only known-working multi-stage payload does the same. Bare uuids are accepted
-// for a single stage but have never worked for more than one.
+// Anova's own client prefixes cookId with the platform (confirmed against a
+// running official recipe: "android-68b93a6d-..."). Stage ids stay bare.
 const cookUuid = () => 'android-' + uuid();
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
   'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -1036,7 +1035,7 @@ function stagePair(s, isLast, withPreheat){
 
   const base = () => {
     const st = {
-      stepType:'stage', id: cookUuid(), title:'', description:'',
+      stepType:'stage', id: uuid(), title:'', description:'',
       userActionRequired:false,
       temperatureBulbs: bulbs(),
       heatingElements: { top:{on:!!s.top}, bottom:{on:!!s.bottom}, rear:{on:!!s.rear} },
@@ -1066,6 +1065,11 @@ function stagePair(s, isLast, withPreheat){
   }
   if (!withPreheat) return [cook];
   const pre = base(); pre.type = 'preheat';
+  // The oven pairs a preheat to its cook stage BY ID: a running official Anova
+  // recipe shows "<uuid>-preheat" immediately before "<uuid>". Two unrelated
+  // uuids - what this app sent until now - leave the preheat with nothing to
+  // hand off to, and the whole multi-stage cook is dropped without a word.
+  pre.id = cook.id + '-preheat';
   return [pre, cook];
 }
 const round2 = v => Math.round(v*100)/100;

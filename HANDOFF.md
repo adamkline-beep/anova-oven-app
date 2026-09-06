@@ -306,7 +306,33 @@ exercised in a browser.**
    recipe started normally with the oven above 250 F, so cooldown state is not
    the cause. Stage count is.
 
-   **CAUSE FOUND 2026-09-06 (pending hardware confirmation).** A known-working
+   **ACTUAL CAUSE, from a real official-app cook (2026-09-06).** Owner ran a
+   multi-stage recipe from the Anova app; the echoed plan is saved as
+   `fixtures/state-v1-official-anova-multistage.json`. The stage ids give it away:
+
+   ```
+   "id": "0e81c84f-3a29-4033-b2f0-3199b0059ceb-preheat"   <- preheat
+   "id": "0e81c84f-3a29-4033-b2f0-3199b0059ceb"           <- its cook
+   ```
+
+   **A preheat is bound to its cook stage by id: `<cookStageId>-preheat`.** This
+   app generated two unrelated uuids per pair, so every preheat referred to
+   nothing. One pair happened to survive that; more than one did not, and the
+   oven dropped the plan silently. Fixed in `stagePair()`.
+
+   Two corrections to the previous round while here:
+   - **Stage ids must stay bare uuids.** `cookId` takes the `android-` prefix
+     (confirmed: `android-68b93a6d-...`) but stage ids do not. The third-party
+     reference example prefixes both; the real oven does not.
+   - `userActionRequired: true` is set on **every** stage in the official plan,
+     mid-plan included, so it is not the "only the last stage" rule assumed
+     earlier. Harmless as we send it, but the earlier reasoning was wrong.
+
+   Also visible: the official plan's **first stage has no preheat at all** (it is
+   a wet proof stage). Preheats appear to be emitted only when the setpoint has
+   to rise. This app always emits one; not known to be a problem.
+
+   **Superseded reasoning below (kept for the audit trail).** A known-working
    3-stage payload exists at
    `https://github.com/bogd/anova-oven-api/blob/main/docs/examples/CMD_APO_START.json`,
    saved as `fixtures/reference-CMD_APO_START.json`. It is preheat/cook pairs -
