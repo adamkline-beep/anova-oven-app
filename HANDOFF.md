@@ -203,10 +203,13 @@ every Fahrenheit bound is an exact conversion of its Celsius one.
 Other constraints the guide states outright:
 
 - **"The convection fan will always run at high speed while the rear element is
-  in use."** This is the owner's fan rule, in Anova's own words, and it is why a
-  sous vide stage at fan 25 is refused - sous vide runs on the rear element.
-  The guide says nothing about steam requiring the fan; `needsFullFan()` forces
-  it there too on the owner's report, which is weaker evidence.
+  in use."** Anova's own words, and it is why a sous vide stage at fan 25 is
+  refused - sous vide runs on the rear element.
+- **Steam locks the fan to high as well.** Not in the guide, but the owner
+  reports that Anova's app locks the fan whenever steam is set to anything other
+  than 0%. `needsFullFan()` matches that exactly, **0% included: steam at 0% is
+  not steam and locks nothing.** So a top-and-bottom stage with no steam is the
+  only case where the fan is yours to choose.
 - Elements: top and rear 1600 W to 482 °F, bottom 700 W to 356 °F.
 - **Five tray positions**, not three. The app offered 1-3 until 2026-09-06.
 - **Steam percentage changes meaning at 212 °F / 100 °C.** At or below, the

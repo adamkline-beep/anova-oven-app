@@ -37,8 +37,8 @@ breaking the editor. Write them all anyway; the defaults are not obvious.
 ## Rules the oven enforces
 
 - Never all three elements on, never all three off.
-- **The fan must be 100 whenever the rear element or steam is in use**, sous
-  vide included. Confirmed on hardware for sous vide: the same stage at fan 25
+- **The fan must be 100 whenever the rear element or steam above 0% is in use**,
+  sous vide included. Steam at 0% does not count. Confirmed on hardware for sous vide: the same stage at fan 25
   is refused without a word. The app forces it, so `fan` is ignored on those
   stages - but write 100 anyway so the file reads truthfully. Only a stage using
   the top and/or bottom elements with no steam has a fan you can choose.

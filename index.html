@@ -972,8 +972,9 @@ function stageForm(s, idx){
   // fan / rack / vent
   const f4 = el('div','grid2');
   if (needsFullFan(s)){
+    const usingSteam = s.steam !== 'none' && s.steamVal > 0;
     const why = s.mode === 'wet' ? 'sous vide'
-              : (s.rear && s.steam !== 'none') ? 'the rear element and steam'
+              : (s.rear && usingSteam) ? 'the rear element and steam'
               : s.rear ? 'the rear element' : 'steam';
     const ff = el('div','field');
     ff.innerHTML = '<label>Fan speed %</label>' +
@@ -1101,12 +1102,12 @@ function validate(r){
 /* ============================================================
    Building and sending the cook
    ============================================================ */
-// The oven wants a full fan whenever the rear element or steam is in play - the
-// rear element is the convection element and steam has to be circulated. Owner's
-// rule, and it matches every silent refusal seen so far. Only sous vide is
-// confirmed on hardware (fan 25 refused, fan 100 ran); the rest is applied
-// because the failure mode is a silent drop and the cost of a faster fan is low.
-const needsFullFan = s => !!s.rear || s.steam !== 'none' || s.mode === 'wet';
+// A full fan is required whenever the rear element or steam is in use. The rear
+// half is Anova's own wording in the Quick Start Guide; the steam half is how
+// Anova's app behaves - it locks the fan to high for any steam setting above 0%.
+// Steam at 0% is not steam, and does not lock anything.
+const needsFullFan = s =>
+  !!s.rear || s.mode === 'wet' || (s.steam !== 'none' && s.steamVal > 0);
 
 function stagePair(s, isLast, withPreheat){
   const c = toC(s), f = c2f(c);
