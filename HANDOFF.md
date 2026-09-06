@@ -302,17 +302,24 @@ exercised in a browser.**
    stage, so 2 stages send preheat, cook, preheat, cook. The oven may accept only
    one leading preheat followed by plain `cook` stages.
 
-   *B - the oven was hot and venting.* **This is a real confound and was missed
-   at first.** Every failed attempt (16:08, 16:13) happened while the oven was
-   cooling from the 15:54 cook - 338 F then 298 F, `vent.open true`, `fan.speed
-   0`, `rear.on true` at 0 watts. The one success started from a cool oven. The
-   oven may simply refuse a new cook mid-cooldown, in which case stage count is
-   irrelevant and nothing is wrong with the payload.
+   *B - the oven was hot and venting.* **RULED OUT 2026-09-06.** A single-stage
+   recipe started normally with the oven above 250 F, so cooldown state is not
+   the cause. Stage count is.
 
-   **Discriminating test, do this before changing any code:** with the oven hot
-   and venting, start a *single*-stage recipe. If it also fails, the cause is
-   oven state (B) and the multi-stage theory is dead. If it starts, the cause is
-   stage count (A). Then repeat the 2-stage recipe from a fully cool oven.
+   **Current state: `store.plan` selects the stage layout**, switchable under
+   Setup -> Troubleshooting, because the oven gives no reason and each guess
+   otherwise costs a deploy plus a trip to the kitchen:
+
+   | value | layout for N stages | status |
+   |---|---|---|
+   | `one` (default) | one leading preheat, then N cook stages | untested |
+   | `each` | preheat before every stage | **refused by the oven** |
+   | `none` | N cook stages, no preheat | untested |
+
+   Single-stage recipes compile identically under `one` and `each`, so the
+   known-good path is unaffected either way. **Once a layout is confirmed,
+   collapse this back to a constant and delete the selector** - it is scaffolding,
+   not a feature.
 2. **A timerless cook parks at temperature with no hint.** Legitimate behaviour
    on the last stage, but the app never read `stageTransitionPendingUserAction`.
    The cook screen now shows "Preheated - press start on the oven" when it flips.

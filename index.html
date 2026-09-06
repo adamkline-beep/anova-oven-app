@@ -321,6 +321,13 @@ pre{
 
   <h2 class="sec">Troubleshooting</h2>
   <div id="lastErr" style="display:none"></div>
+  <div class="hint" style="margin-bottom:8px">Multi-stage layout &mdash; temporary, while we work out which one the oven accepts. Single-stage recipes are unaffected.</div>
+  <div class="seg" id="planSeg">
+    <button data-p="one" aria-pressed="true">One preheat</button>
+    <button data-p="each" aria-pressed="false">Preheat each</button>
+    <button data-p="none" aria-pressed="false">No preheat</button>
+  </div>
+  <div class="hint" style="margin-bottom:14px">&ldquo;Preheat each&rdquo; is the layout the oven refused.</div>
   <button class="btn slim" id="btnRaw">Show raw oven data</button>
   <div class="hint">Useful if a reading looks wrong &mdash; send me this and I can correct the app.</div>
 </section>
@@ -368,7 +375,12 @@ const store = {
   get recipes(){ try { return JSON.parse(localStorage.getItem('anova.recipes')||'[]'); } catch { return []; } },
   set recipes(v){ localStorage.setItem('anova.recipes', JSON.stringify(v)); },
   get wake(){ return localStorage.getItem('anova.wake') !== '0'; },   // on unless turned off
-  set wake(v){ localStorage.setItem('anova.wake', v ? '1' : '0'); }
+  set wake(v){ localStorage.setItem('anova.wake', v ? '1' : '0'); },
+  // TEMPORARY. Multi-stage cooks are silently refused and the oven gives no
+  // reason, so the stage layout is switchable while we find out which one it
+  // accepts. Collapse this back to a constant once that is known.
+  get plan(){ return localStorage.getItem('anova.plan') || 'one'; },
+  set plan(v){ localStorage.setItem('anova.plan', v); }
 };
 
 /* ---------- oven limits (v1) ---------- */
@@ -1011,7 +1023,7 @@ function validate(r){
 /* ============================================================
    Building and sending the cook
    ============================================================ */
-function stagePair(s, isLast){
+function stagePair(s, isLast, withPreheat){
   const c = toC(s), f = c2f(c);
   // Built per stage, not shared: two stages aliasing one object is a trap.
   const bulbs = () => s.mode === 'wet'
@@ -1034,7 +1046,6 @@ function stagePair(s, isLast){
     return st;
   };
 
-  const pre = base(); pre.type = 'preheat';
   const cook = base(); cook.type = 'cook';
 
   if (s.probe > 0){
@@ -1052,6 +1063,8 @@ function stagePair(s, isLast){
     cook.userActionRequired = true;
     cook.stageTransitionType = 'manual';
   }
+  if (!withPreheat) return [cook];
+  const pre = base(); pre.type = 'preheat';
   return [pre, cook];
 }
 const round2 = v => Math.round(v*100)/100;
@@ -1061,8 +1074,14 @@ function runRecipe(r){
   const errs = validate(r);
   if (errs.length){ fail('Not sent — ' + errs.join('  ')); return; }
 
+  // 'one'  - a single leading preheat, then plain cook stages
+  // 'each' - a preheat before every stage (the original behaviour, refused)
+  // 'none' - no preheat stages at all
+  const plan = store.plan;
   const stages = [];
-  r.stages.forEach((s, i) => stages.push(...stagePair(s, i === r.stages.length - 1)));
+  r.stages.forEach((s, i) => stages.push(
+    ...stagePair(s, i === r.stages.length - 1, plan === 'each' || (plan === 'one' && i === 0))
+  ));
   const reqId = uuid(), cookId = uuid();
 
   const ok = send({
@@ -1311,6 +1330,12 @@ $('#btnRaw').onclick = () => {
 };
 document.querySelectorAll('#unitSeg button').forEach(b => b.onclick = () => setUnit(b.dataset.u));
 document.querySelectorAll('#wakeSeg button').forEach(b => b.onclick = () => setWake(b.dataset.w === '1'));
+document.querySelectorAll('#planSeg button').forEach(b => b.onclick = () => {
+  store.plan = b.dataset.p;
+  document.querySelectorAll('#planSeg button').forEach(x =>
+    x.setAttribute('aria-pressed', String(x.dataset.p === store.plan)));
+  toast('Stage layout: ' + b.textContent);
+});
 
 /* ---------- helpers ---------- */
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -1339,6 +1364,8 @@ document.querySelectorAll('#unitSeg button').forEach(b =>
   b.setAttribute('aria-pressed', String(b.dataset.u === store.unit)));
 document.querySelectorAll('#wakeSeg button').forEach(b =>
   b.setAttribute('aria-pressed', String((b.dataset.w === '1') === store.wake)));
+document.querySelectorAll('#planSeg button').forEach(b =>
+  b.setAttribute('aria-pressed', String(b.dataset.p === store.plan)));
 if (!wakeSupported()){
   document.querySelectorAll('#wakeSeg button').forEach(b => b.disabled = true);
   $('#wakeHint').textContent = 'This browser cannot hold the screen on. Install the app to your home screen, or set the screen timeout in Android settings.';
