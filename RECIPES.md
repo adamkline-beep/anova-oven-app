@@ -28,6 +28,7 @@ Omit `id`; the app always issues a fresh one on import.
 | `vent` | bool | vent open |
 | `rack` | 1-3 | rack position |
 | `timer` | seconds | 0 means no timer |
+| `hold` | bool | wait for a press on the oven's panel before starting this stage |
 | `probe` | °F | probe target; 0 means none. **Untested on hardware** |
 
 Every field is optional - `normalizeRecipe()` fills gaps from `blankStage()`,
@@ -53,6 +54,16 @@ breaking the editor. Write them all anyway; the defaults are not obvious.
   way to know when to move on and refuses the whole cook.
 - A last stage with neither parks the oven at temperature until someone presses
   its front panel. That is legitimate, and the app says so on screen.
+
+## Holding a stage
+
+`"hold": true` sets `userActionRequired` on a stage, so the oven finishes the
+previous stage, holds at temperature and does not begin this one until someone
+presses its front panel. The app shows "Preheated - press start on the oven"
+while it waits. Ignored on the first stage, which has nothing to wait after.
+
+That is what lets one recipe both preheat a baking steel and then pause while
+the food goes in, instead of needing two recipes and a stopwatch.
 
 ## Notes on writing good stages
 

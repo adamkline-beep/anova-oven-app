@@ -779,7 +779,7 @@ function renderQuickList(force){
 function blankStage(){
   return { temp: 350, unit:'F', mode:'dry', steam:'none', steamVal:100,
            top:false, bottom:false, rear:true, fan:100, vent:false,
-           rack:3, timer:1800, probe:0 };
+           rack:3, timer:1800, probe:0, hold:false };
 }
 function blankRecipe(){ return { id: uuid(), name:'', stages:[blankStage()] }; }
 
@@ -811,7 +811,8 @@ function normalizeRecipe(r){
         vent: !!s.vent,
         rack: clamp(Math.round(num(s.rack, 3)), 1, 5),
         timer: Math.max(0, Math.round(num(s.timer, 0))),
-        probe: Math.max(0, Math.round(num(s.probe, 0)))
+        probe: Math.max(0, Math.round(num(s.probe, 0))),
+        hold: !!s.hold
       };
     })
   };
@@ -996,6 +997,22 @@ function stageForm(s, idx){
   });
   f5.appendChild(vs); b.appendChild(f5);
 
+  if (idx > 0){
+    const f5b = el('div','field'); f5b.innerHTML = '<label>Starting this stage</label>';
+    const hs = el('div','seg');
+    [['false','Straight after the last'],['true','Wait for me']].forEach(([v,label]) => {
+      const btn = el('button'); btn.textContent = label;
+      btn.setAttribute('aria-pressed', String(String(!!s.hold) === v));
+      btn.onclick = () => { s.hold = (v === 'true'); drawStages(); };
+      hs.appendChild(btn);
+    });
+    f5b.appendChild(hs);
+    const hh = el('div','hint');
+    hh.textContent = '“Wait for me” holds the oven at temperature until you press start on its panel — time to get the food in.';
+    f5b.appendChild(hh);
+    b.appendChild(f5b);
+  }
+
   // stop condition
   const f6 = el('div','field');
   f6.innerHTML = '<label>Move on when</label>';
@@ -1132,6 +1149,11 @@ function stagePair(s, isLast, withPreheat){
   };
 
   const cook = base(); cook.type = 'cook';
+  // "Wait for me": the oven finishes the previous stage, holds at temperature
+  // and does not begin this one until its front panel is pressed. This is how
+  // the official Anova plan marks every stage, and it is what lets a recipe
+  // preheat a baking steel and then wait while the food goes in.
+  if (s.hold) cook.userActionRequired = true;
 
   if (s.probe > 0){
     const pc = f2c(s.probe);
@@ -1158,6 +1180,7 @@ function stagePair(s, isLast, withPreheat){
 
   if (!withPreheat) return [cook];
   const pre = base(); pre.type = 'preheat';
+  if (s.hold) pre.userActionRequired = true;
   // The oven pairs a preheat to its cook stage BY ID: a running official Anova
   // recipe shows "<uuid>-preheat" immediately before "<uuid>". Two unrelated
   // uuids - what this app sent until now - leave the preheat with nothing to

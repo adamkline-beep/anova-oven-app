@@ -22,8 +22,24 @@
       ]
     },
     {
-      "name": "Salt rolls \u2014 bake",
+      "name": "Salt rolls",
       "stages": [
+        {
+          "temp": 350,
+          "unit": "F",
+          "mode": "dry",
+          "steam": "none",
+          "steamVal": 0,
+          "top": false,
+          "bottom": true,
+          "rear": false,
+          "fan": 25,
+          "vent": false,
+          "rack": 2,
+          "timer": 2700,
+          "probe": 0,
+          "hold": false
+        },
         {
           "temp": 350,
           "unit": "F",
@@ -37,7 +53,8 @@
           "vent": false,
           "rack": 2,
           "timer": 300,
-          "probe": 0
+          "probe": 0,
+          "hold": true
         },
         {
           "temp": 350,
@@ -52,7 +69,8 @@
           "vent": false,
           "rack": 2,
           "timer": 780,
-          "probe": 0
+          "probe": 0,
+          "hold": false
         },
         {
           "temp": 375,
@@ -67,7 +85,8 @@
           "vent": false,
           "rack": 2,
           "timer": 240,
-          "probe": 0
+          "probe": 0,
+          "hold": false
         }
       ]
     }

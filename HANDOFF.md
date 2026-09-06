@@ -303,6 +303,19 @@ no `timer.startType`, no `timerStartOnDetect` anywhere. The last stage may set
 `userActionRequired: true` when it has neither timer nor probe, which parks the
 oven at temperature until someone presses its panel.
 
+## Holding a stage for the cook
+
+A recipe stage carries `hold`. When set, `stagePair()` puts
+`userActionRequired: true` on both halves of that stage, and the oven holds at
+temperature until its front panel is pressed - the app surfaces this through
+`stageTransitionPendingUserAction` as "Preheated - press start on the oven".
+The official Anova plan sets `userActionRequired` on every stage, so a mid-plan
+hold is well supported by the protocol; **this app's use of it is not yet
+confirmed on hardware.**
+
+It exists so a single recipe can soak a baking steel, wait while the food goes
+in, and then bake - see "Salt rolls" in the library.
+
 ## Getting recipes onto the phone
 
 Three routes, in order of how little the owner has to do:
