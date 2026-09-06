@@ -1,0 +1,52 @@
+{
+  "_note": "The exact CMD_APO_START the app sent at 2026-09-06T16:13:36Z for a 2-stage recipe ('Salt bread'). The oven NEVER responded: no ERROR frame, no cook object, state stayed idle. lastError was the app's own 12s acknowledgement timeout, frame null. Note the oven was HOT AND VENTING at the time (dry 298F, vent open, cooling from the 15:54 cook) -- that is an unresolved confound, see HANDOFF.",
+  "command": "CMD_APO_START",
+  "requestId": "e6749c25-d1d2-4c00-953a-81c4825cab02",
+  "payload": {
+    "id": "0123c79e76ceee3401",
+    "type": "CMD_APO_START",
+    "payload": {
+      "cookId": "c9a5230a-d432-4cd6-9de4-b9f164b3d507",
+      "cookerId": "0123c79e76ceee3401",
+      "cookableId": "",
+      "title": "Salt bread",
+      "type": "oven_v1",
+      "originSource": "api",
+      "cookableType": "manual",
+      "stages": [
+        { "stepType": "stage", "id": "e635cf4b-b467-4ebe-8377-d1f1c3e93ff5", "title": "", "description": "",
+          "userActionRequired": false,
+          "temperatureBulbs": { "mode": "dry", "dry": { "setpoint": { "celsius": 204.44, "fahrenheit": 400 } } },
+          "heatingElements": { "top": { "on": false }, "bottom": { "on": false }, "rear": { "on": true } },
+          "fan": { "speed": 25 }, "vent": { "open": false }, "rackPosition": 3,
+          "stageTransitionType": "automatic", "type": "preheat" },
+        { "stepType": "stage", "id": "f6e0dd46-9c6b-43d3-99b8-6240c5a61372", "title": "", "description": "",
+          "userActionRequired": false,
+          "temperatureBulbs": { "mode": "dry", "dry": { "setpoint": { "celsius": 204.44, "fahrenheit": 400 } } },
+          "heatingElements": { "top": { "on": false }, "bottom": { "on": false }, "rear": { "on": true } },
+          "fan": { "speed": 25 }, "vent": { "open": false }, "rackPosition": 3,
+          "stageTransitionType": "automatic", "type": "cook",
+          "timerAdded": true, "probeAdded": false, "timerStartOnDetect": false,
+          "timer": { "initial": 180, "startType": "when-preheated" } },
+        { "stepType": "stage", "id": "54d27d07-cb53-4017-9436-acb0e9a373aa", "title": "", "description": "",
+          "userActionRequired": false,
+          "temperatureBulbs": { "mode": "dry", "dry": { "setpoint": { "celsius": 190.56, "fahrenheit": 375 } } },
+          "heatingElements": { "top": { "on": false }, "bottom": { "on": false }, "rear": { "on": true } },
+          "fan": { "speed": 25 }, "vent": { "open": false }, "rackPosition": 3,
+          "stageTransitionType": "automatic",
+          "steamGenerators": { "mode": "steam-percentage", "steamPercentage": { "setpoint": 40 } },
+          "type": "preheat" },
+        { "stepType": "stage", "id": "5c3313a7-abbf-433e-9d98-31a96ff12259", "title": "", "description": "",
+          "userActionRequired": false,
+          "temperatureBulbs": { "mode": "dry", "dry": { "setpoint": { "celsius": 190.56, "fahrenheit": 375 } } },
+          "heatingElements": { "top": { "on": false }, "bottom": { "on": false }, "rear": { "on": true } },
+          "fan": { "speed": 25 }, "vent": { "open": false }, "rackPosition": 3,
+          "stageTransitionType": "automatic",
+          "steamGenerators": { "mode": "steam-percentage", "steamPercentage": { "setpoint": 40 } },
+          "type": "cook",
+          "timerAdded": true, "probeAdded": false, "timerStartOnDetect": false,
+          "timer": { "initial": 180, "startType": "when-preheated" } }
+      ]
+    }
+  }
+}

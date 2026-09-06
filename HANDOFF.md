@@ -288,11 +288,31 @@ exercised in a browser.**
    this change was never going to address the timed case. The change is still
    correct on its own terms, but **the multi-stage cause is still unknown.**
 
-   Leading untested hypothesis: `stagePair()` emits a `preheat` stage before
-   *every* user stage, so a 2-stage recipe sends preheat, cook, preheat, cook.
-   A mid-plan `preheat` may be invalid - the oven may expect one leading preheat
-   and plain `cook` stages after it. Do not change this without reading the
-   oven's actual error first; that has now been made visible (see Diagnosis).
+   **The oven sends no error at all.** Full outbound frame captured in
+   `fixtures/sent-2stage-rejected.json`: 4 well-formed stages, and the oven never
+   responds - no `ERROR`, no `cook`, `mode` stays `idle`. The only thing that
+   fires is the app's own 12 s acknowledgement timeout. So the frame is being
+   accepted by the cloud and dropped by the oven, which rules out reading a
+   reason off the wire. Progress from here has to come from controlled
+   experiments, not from more logging.
+
+   **Two live hypotheses, both untested:**
+
+   *A - mid-plan preheat.* `stagePair()` emits a `preheat` before *every* user
+   stage, so 2 stages send preheat, cook, preheat, cook. The oven may accept only
+   one leading preheat followed by plain `cook` stages.
+
+   *B - the oven was hot and venting.* **This is a real confound and was missed
+   at first.** Every failed attempt (16:08, 16:13) happened while the oven was
+   cooling from the 15:54 cook - 338 F then 298 F, `vent.open true`, `fan.speed
+   0`, `rear.on true` at 0 watts. The one success started from a cool oven. The
+   oven may simply refuse a new cook mid-cooldown, in which case stage count is
+   irrelevant and nothing is wrong with the payload.
+
+   **Discriminating test, do this before changing any code:** with the oven hot
+   and venting, start a *single*-stage recipe. If it also fails, the cause is
+   oven state (B) and the multi-stage theory is dead. If it starts, the cause is
+   stage count (A). Then repeat the 2-stage recipe from a fully cool oven.
 2. **A timerless cook parks at temperature with no hint.** Legitimate behaviour
    on the last stage, but the app never read `stageTransitionPendingUserAction`.
    The cook screen now shows "Preheated - press start on the oven" when it flips.
