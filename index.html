@@ -301,6 +301,13 @@ pre{
   </div>
   <div class="hint">Also sets the unit shown on the oven's own display.</div>
 
+  <h2 class="sec">Screen</h2>
+  <div class="seg" id="wakeSeg">
+    <button data-w="1" aria-pressed="true">Stay awake</button>
+    <button data-w="0" aria-pressed="false">Off</button>
+  </div>
+  <div class="hint" id="wakeHint">Holds the screen on while a cook is running, so a glance across the kitchen reads the temperature. Only applies while the app is open and in front.</div>
+
   <h2 class="sec">Oven</h2>
   <div id="devInfo" class="empty">Not connected yet.</div>
 
@@ -350,7 +357,9 @@ const store = {
   get unit(){ return localStorage.getItem('anova.unit') || 'F'; },
   set unit(v){ localStorage.setItem('anova.unit', v); },
   get recipes(){ try { return JSON.parse(localStorage.getItem('anova.recipes')||'[]'); } catch { return []; } },
-  set recipes(v){ localStorage.setItem('anova.recipes', JSON.stringify(v)); }
+  set recipes(v){ localStorage.setItem('anova.recipes', JSON.stringify(v)); },
+  get wake(){ return localStorage.getItem('anova.wake') !== '0'; },   // on unless turned off
+  set wake(v){ localStorage.setItem('anova.wake', v ? '1' : '0'); }
 };
 
 /* ---------- oven limits (v1) ---------- */
@@ -444,7 +453,43 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && store.token) {
     if (!ws || ws.readyState > 1) { retry = 0; connect(); }
   }
+  wakeApply();
 });
+
+/* ---------- screen wake lock ----------
+   Android drops the lock whenever the page is hidden and will not restore it,
+   so wakeApply() is both the acquire and the re-acquire path. Held only while a
+   cook is actually running; a phone left awake on an idle oven is a dead phone. */
+let wakeLock = null, wantWake = false;
+const wakeSupported = () => 'wakeLock' in navigator;
+
+async function wakeApply(){
+  const want = wantWake && store.wake && document.visibilityState === 'visible';
+  if (want){
+    if (wakeLock) return;
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      // Fires on our own release too, and when Android reclaims it on low battery.
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch { wakeLock = null; }   // unsupported, denied, or battery saver
+  } else if (wakeLock){
+    try { await wakeLock.release(); } catch {}
+    wakeLock = null;
+  }
+}
+
+function wakeFollow(cooking){
+  if (cooking === wantWake) return;
+  wantWake = cooking;
+  wakeApply();
+}
+
+function setWake(on){
+  store.wake = on;
+  document.querySelectorAll('#wakeSeg button').forEach(b =>
+    b.setAttribute('aria-pressed', String((b.dataset.w === '1') === on)));
+  wakeApply();
+}
 
 function send(obj){
   if (!ws || ws.readyState !== 1){ toast('Not connected to the oven'); return false; }
@@ -528,6 +573,7 @@ function renderCook(){
   const cur = T(bulb && bulb.current, u);
   const set = T(bulb && bulb.setpoint, u);
   const cooking = !!(snap && snap.cook) || (snap && snap.mode && /cook|preheat/i.test(snap.mode));
+  wakeFollow(!!cooking);
 
   const big = $('#curTemp');
   big.textContent = cur == null ? '--' : cur;
@@ -1194,6 +1240,7 @@ $('#btnRaw').onclick = () => {
   $('#sheet').classList.add('on');
 };
 document.querySelectorAll('#unitSeg button').forEach(b => b.onclick = () => setUnit(b.dataset.u));
+document.querySelectorAll('#wakeSeg button').forEach(b => b.onclick = () => setWake(b.dataset.w === '1'));
 
 /* ---------- helpers ---------- */
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -1220,6 +1267,12 @@ function renderAll(){ quickSig = null; renderCook(); renderRecipes(); renderSetu
 $('#tok').value = store.token;
 document.querySelectorAll('#unitSeg button').forEach(b =>
   b.setAttribute('aria-pressed', String(b.dataset.u === store.unit)));
+document.querySelectorAll('#wakeSeg button').forEach(b =>
+  b.setAttribute('aria-pressed', String((b.dataset.w === '1') === store.wake)));
+if (!wakeSupported()){
+  document.querySelectorAll('#wakeSeg button').forEach(b => b.disabled = true);
+  $('#wakeHint').textContent = 'This browser cannot hold the screen on. Install the app to your home screen, or set the screen timeout in Android settings.';
+}
 renderAll();
 if (store.token) connect(); else go('setup');
 

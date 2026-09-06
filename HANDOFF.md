@@ -216,8 +216,22 @@ eyeballing. Ask Claude to rebuild the harness; the pattern is:
    is running. Pins down the `cook` object, `timer.mode` values, and stage transitions.
 2. **Probe cook on hardware.** Confirms `temperatureProbe` vs `probe` field naming.
 3. **Which id `processedCommandIds` echoes** — requestId or cookId.
-4. Possible features: keep the screen awake during a cook (Wake Lock API),
-   notification when a stage ends, cook history, per-recipe rack reminders.
+4. Possible features: notification when a stage ends, cook history,
+   per-recipe rack reminders. (Screen wake lock: done 2026-09-06.)
+
+## Screen wake lock
+
+`wakeApply()` / `wakeFollow()` next to the other lifecycle handlers. The lock is
+held only while a cook is running, driven from the `cooking` flag `renderCook()`
+already computes. Android silently drops the lock whenever the page is hidden and
+never restores it, so `wakeApply()` is both the acquire and the re-acquire path
+and is called from `visibilitychange`. Setting lives at `anova.wake`, default on,
+toggled under Setup -> Screen; the buttons disable themselves when
+`navigator.wakeLock` is missing. A denied request (battery saver) is swallowed.
+
+Verified with a JavaScriptCore harness driving the extracted functions against a
+stubbed `navigator.wakeLock`. **The DOM wiring - the Setup toggle - has not been
+exercised in a browser.**
 
 ## Things not to break
 
