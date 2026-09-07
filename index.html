@@ -410,6 +410,9 @@ const store = {
   set unit(v){ localStorage.setItem('anova.unit', v); },
   get recipes(){ try { return JSON.parse(localStorage.getItem('anova.recipes')||'[]'); } catch { return []; } },
   set recipes(v){ localStorage.setItem('anova.recipes', JSON.stringify(v)); },
+  // Tombstones: a deleted recipe has to stay deleted when another device syncs.
+  get deleted(){ try { return JSON.parse(localStorage.getItem('anova.deleted')||'[]'); } catch { return []; } },
+  set deleted(v){ localStorage.setItem('anova.deleted', JSON.stringify(v.slice(-200))); },
   get wake(){ return localStorage.getItem('anova.wake') !== '0'; },   // on unless turned off
   set wake(v){ localStorage.setItem('anova.wake', v ? '1' : '0'); }
 };
@@ -832,6 +835,7 @@ function normalizeRecipe(r){
     notes: txt(r.notes, 8000),
     // Recipes predating this field are all oven programmes.
     usesOven: r.usesOven === undefined ? true : !!r.usesOven,
+    updatedAt: Number.isFinite(+r.updatedAt) ? +r.updatedAt : Date.now(),
     stages: src.slice(0, 12).map(s => {
       s = s || {};
       const unit = s.unit === 'C' ? 'C' : 'F';
@@ -863,6 +867,15 @@ function recipesFrom(d){
   if (d && Array.isArray(d.recipes)) return d.recipes;
   if (d && d.stages) return [d];
   return null;
+}
+
+// Every write to a recipe goes through here so updatedAt is never stale.
+function touch(r){ r.updatedAt = Date.now(); return r; }
+
+function forget(id){
+  const t = store.deleted;
+  t.push({ id: id, at: Date.now() });
+  store.deleted = t;
 }
 
 function addRecipes(list, source){
@@ -915,7 +928,7 @@ function renderRecipes(){
     cp.onclick = () => {
       const rs2 = store.recipes;
       const copy = JSON.parse(JSON.stringify(r));
-      copy.id = uuid(); copy.name = r.name + ' copy';
+      copy.id = uuid(); copy.name = r.name + ' copy'; touch(copy);
       rs2.splice(i+1, 0, copy); store.recipes = rs2; renderAll(); toast('Duplicated');
     };
     if (r.usesOven === false) c.querySelector('.go').append(view, ed, cp);
@@ -1480,6 +1493,7 @@ $('#btnSave').onclick = () => {
     return;
   }
   const rs = store.recipes;
+  touch(editing);
   if (editIdx >= 0) rs[editIdx] = editing; else { editing.id = uuid(); rs.push(editing); }
   store.recipes = rs;
   toast('Saved');
@@ -1491,6 +1505,7 @@ $('#btnDelete').onclick = () => {
   if (editIdx < 0) return;
   const rs = store.recipes;
   const nm = rs[editIdx].name;
+  forget(rs[editIdx].id);
   rs.splice(editIdx, 1); store.recipes = rs;
   toast('Deleted ' + nm);
   renderAll(); go('recipes');
