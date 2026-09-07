@@ -237,9 +237,12 @@ function parseIng(text){
       // Only a real unit belongs with the number; "1 large egg" is one egg.
       const unit = UNITS[word] || '';
       const rest = unit ? m[3] : ((m[2] ? m[2] + ' ' : '') + m[3]).trim();
-      return { q: (m[1] + (unit ? ' ' + unit : '')).trim(), n: rest };
+      // q and n are what this page draws; qty, unit and text are what
+      // mentionedIn() reads. It is shared with the app, so both must be here.
+      return { q: (m[1] + (unit ? ' ' + unit : '')).trim(), n: rest,
+               qty: parseFloat(m[1]), unit: unit, text: rest };
     }
-    return { q: '', n: t };
+    return { q: '', n: t, text: t };
   });
 }
 
