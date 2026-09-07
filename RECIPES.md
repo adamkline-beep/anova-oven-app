@@ -43,7 +43,7 @@ before this field existed is still an oven programme.
 | `top`, `bottom`, `rear` | bool | heating elements |
 | `fan` | 0-100 | fan speed |
 | `vent` | bool | vent open |
-| `rack` | 1-3 | rack position |
+| `rack` | 1-5 | rack position |
 | `timer` | seconds | 0 means no timer |
 | `hold` | bool | wait for a press on the oven's panel before starting this stage |
 | `probe` | °F | probe target; 0 means none. **Untested on hardware** |
