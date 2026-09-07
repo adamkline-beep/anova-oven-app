@@ -151,6 +151,10 @@ main{padding:var(--pad);max-width:640px;margin:0 auto}
 .ovn{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;
   border-radius:6px;background:var(--raised);color:var(--ember);font-size:12px;font-weight:600}
 .ovhold{width:100%;color:var(--ember);font-size:13px;margin-top:3px}
+.amts{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.amt{background:var(--raised);border:1px solid var(--line);border-radius:8px;
+  padding:5px 9px;font-size:13px;color:var(--dim)}
+.amt b{color:var(--ember);font-weight:600;font-variant-numeric:tabular-nums;margin-right:2px}
 .trow{display:flex;align-items:center;gap:9px;margin-top:9px}
 .tbtn{font-size:13px;padding:6px 11px;border-radius:8px;background:var(--raised);
   border:1px solid var(--line);color:var(--ember)}
@@ -1196,6 +1200,36 @@ function logBake(r){
   $('#sheet').classList.add('on');
 }
 
+
+// Which ingredients a step is talking about. Tries the whole name first, then
+// drops leading adjectives - "unsalted European butter", then "European
+// butter", then "butter" - so a step that says "add the butter" still finds
+// it. Word boundaries, so "egg" does not match "eggplant".
+function mentionedIn(step, lines){
+  const text = ' ' + String(step || '').toLowerCase() + ' ';
+  const hits = [];
+  lines.forEach((l, i) => {
+    if (!l || l.blank || l.heading || l.qty == null) return;
+    const name = String(l.text || '').split(',')[0].trim().toLowerCase();
+    if (!name) return;
+    const words = name.split(/\s+/).filter(Boolean);
+    for (let w = 0; w < words.length; w++){
+      const cand = words.slice(w).join(' ');
+      if (cand.length < 3) continue;
+      const rx = new RegExp('(^|[^a-z])' + cand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^a-z]|$)', 'i');
+      if (rx.test(text)){ hits.push({ line: l, idx: i, key: cand }); break; }
+    }
+  });
+  return hits;
+}
+
+// When two ingredients share a name - two lots of bread flour - say which is
+// which by the heading they sit under.
+function headingFor(lines, idx){
+  for (let i = idx; i >= 0; i--) if (lines[i] && lines[i].heading) return lines[i].text;
+  return '';
+}
+
 // Steps may be separated by blank lines, or just numbered one per line. Both
 // are how people write a method, so accept either - and the helper page uses
 // exactly the same rule.
@@ -1444,6 +1478,25 @@ function drawView(){
       const body = el('div'); body.textContent = txt;
       body.onclick = () => { ticked['s'+i] = !ticked['s'+i]; drawView(); };
       row.appendChild(body);
+
+      // The amounts this step needs, scaled with everything else.
+      const hits = mentionedIn(txt, lines);
+      if (hits.length){
+        const names = {};
+        hits.forEach(h => { names[h.key] = (names[h.key] || 0) + 1; });
+        const amts = el('div','amts');
+        hits.forEach(h => {
+          const sc = scaleLine(h.line, viewScale);
+          const chip = el('span','amt');
+          const q = el('b');
+          q.textContent = showQty(sc.qty, sc.unit) + (sc.unit ? ' ' + sc.unit : '');
+          chip.appendChild(q);
+          const head = names[h.key] > 1 ? headingFor(lines, h.idx) : '';
+          chip.appendChild(document.createTextNode(' ' + h.line.text + (head ? ' · ' + head.toLowerCase() : '')));
+          amts.appendChild(chip);
+        });
+        row.appendChild(amts);
+      }
 
       const secs = durationIn(txt);
       if (secs > 0){

@@ -80,6 +80,12 @@ footer button{flex:1;padding:17px 0;border-radius:13px;font-size:17px;font-weigh
 footer button.go{background:var(--ember);color:#241703;border-color:transparent}
 footer button:disabled{opacity:.3}
 
+.amts{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.amts.small{margin-top:7px}
+.amt{background:var(--raised);border:1px solid var(--line);border-radius:9px;
+  padding:6px 11px;font-size:15px;color:var(--text)}
+.amts.small .amt{font-size:13.5px;padding:4px 9px}
+.amt b{color:var(--ember);font-weight:600;font-variant-numeric:tabular-nums}
 .allsteps{margin-top:2px}
 .astep{display:flex;gap:11px;align-items:baseline;padding:11px 2px;
   border-bottom:1px solid var(--line);font-size:16.5px;line-height:1.45;white-space:pre-wrap}
@@ -259,6 +265,36 @@ function splitSteps(text){
   return byGap;
 }
 
+
+// Which ingredients a step is talking about. Tries the whole name first, then
+// drops leading adjectives - "unsalted European butter", then "European
+// butter", then "butter" - so a step that says "add the butter" still finds
+// it. Word boundaries, so "egg" does not match "eggplant".
+function mentionedIn(step, lines){
+  const text = ' ' + String(step || '').toLowerCase() + ' ';
+  const hits = [];
+  lines.forEach((l, i) => {
+    if (!l || l.blank || l.heading || l.qty == null) return;
+    const name = String(l.text || '').split(',')[0].trim().toLowerCase();
+    if (!name) return;
+    const words = name.split(/\s+/).filter(Boolean);
+    for (let w = 0; w < words.length; w++){
+      const cand = words.slice(w).join(' ');
+      if (cand.length < 3) continue;
+      const rx = new RegExp('(^|[^a-z])' + cand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^a-z]|$)', 'i');
+      if (rx.test(text)){ hits.push({ line: l, idx: i, key: cand }); break; }
+    }
+  });
+  return hits;
+}
+
+// When two ingredients share a name - two lots of bread flour - say which is
+// which by the heading they sit under.
+function headingFor(lines, idx){
+  for (let i = idx; i >= 0; i--) if (lines[i] && lines[i].heading) return lines[i].text;
+  return '';
+}
+
 function durationIn(text){
   const m = String(text || '').match(
     /(\d+)\s*(?:[-–—]\s*(\d+))?\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|[smh])\b/i);
@@ -380,7 +416,11 @@ function draw(){
       STEPS.forEach((x, i) => {
         const row = el('div','astep');
         const n = el('span','an'); n.textContent = (i + 1);
-        const b = el('span'); b.textContent = x.replace(/^\s*(\d+[.)]|step\s+\d+[:.]?)\s*/i, '');
+        const b = el('div');
+        const line = el('div'); line.textContent = x.replace(/^\s*(\d+[.)]|step\s+\d+[:.]?)\s*/i, '');
+        b.appendChild(line);
+        const amt = amountsFor(x, true);
+        if (amt) b.appendChild(amt);
         row.append(n, b);
         wrap.appendChild(row);
       });
@@ -418,6 +458,7 @@ function draw(){
   const no = el('div','stepno'); no.textContent = 'Step ' + page + ' of ' + STEPS.length;
   const body = el('div','steptext'); body.textContent = txt;
   main.append(no, body);
+  main.appendChild(amountsFor(txt));
 
   const secs = durationIn(txt);
   if (secs){
@@ -444,6 +485,24 @@ function draw(){
   const next = el('button','go'); next.textContent = page === STEPS.length ? 'Finish' : 'Next';
   next.onclick = () => { page++; nextCompliment(); clearTimer(); window.scrollTo(0,0); draw(); };
   foot.append(back, next);
+}
+
+// The amounts a step needs, so nobody has to scroll back to the list.
+function amountsFor(txt, small){
+  const hits = mentionedIn(txt, ING);
+  const wrap = el('div', small ? 'amts small' : 'amts');
+  if (!hits.length) return small ? null : wrap;
+  const names = {};
+  hits.forEach(h => { const k = h.key; names[k] = (names[k] || 0) + 1; });
+  hits.forEach(h => {
+    const chip = el('span','amt');
+    const q = el('b'); q.textContent = h.line.q || '';
+    chip.appendChild(q);
+    const head = names[h.key] > 1 ? headingFor(ING, h.idx) : '';
+    chip.appendChild(document.createTextNode(' ' + h.line.n + (head ? ' · ' + head.toLowerCase() : '')));
+    wrap.appendChild(chip);
+  });
+  return wrap;
 }
 
 function compliment(label){
