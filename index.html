@@ -347,6 +347,12 @@ pre{
   </div>
   <div class="hint">Also sets the unit shown on the oven's own display.</div>
 
+  <h2 class="sec">Account</h2>
+  <div id="acctBox" class="empty">Recipes are stored on this phone only.</div>
+  <button class="btn slim" id="btnSignIn" style="margin-top:9px">Sign in with Google</button>
+  <button class="btn slim" id="btnSignOut" style="margin-top:9px;display:none">Sign out</button>
+  <div class="hint">Signing in keeps your recipes in your own Google account, so they survive this phone and appear on any device you sign in from. Your oven token is never synced &mdash; it stays on this phone.</div>
+
   <h2 class="sec">Screen</h2>
   <div class="seg" id="wakeSeg">
     <button data-w="1" aria-pressed="true">Stay awake</button>
@@ -882,6 +888,7 @@ function addRecipes(list, source){
   const rs = store.recipes;
   list.forEach(r => rs.push(normalizeRecipe(r)));
   store.recipes = rs;
+  syncPush();
   renderAll(); go('recipes');
   toast('Added ' + list.length + ' recipe' + (list.length === 1 ? '' : 's') + (source ? ' from ' + source : ''));
 }
@@ -929,7 +936,7 @@ function renderRecipes(){
       const rs2 = store.recipes;
       const copy = JSON.parse(JSON.stringify(r));
       copy.id = uuid(); copy.name = r.name + ' copy'; touch(copy);
-      rs2.splice(i+1, 0, copy); store.recipes = rs2; renderAll(); toast('Duplicated');
+      rs2.splice(i+1, 0, copy); store.recipes = rs2; syncPush(); renderAll(); toast('Duplicated');
     };
     if (r.usesOven === false) c.querySelector('.go').append(view, ed, cp);
     else c.querySelector('.go').append(view, run, ed, cp);
@@ -1496,6 +1503,7 @@ $('#btnSave').onclick = () => {
   touch(editing);
   if (editIdx >= 0) rs[editIdx] = editing; else { editing.id = uuid(); rs.push(editing); }
   store.recipes = rs;
+  syncPush();
   toast('Saved');
   renderAll();
   go('recipes');
@@ -1507,6 +1515,7 @@ $('#btnDelete').onclick = () => {
   const nm = rs[editIdx].name;
   forget(rs[editIdx].id);
   rs.splice(editIdx, 1); store.recipes = rs;
+  syncPush();
   toast('Deleted ' + nm);
   renderAll(); go('recipes');
 };
@@ -1680,6 +1689,26 @@ function toast(msg){
 
 function renderAll(){ quickSig = null; renderCook(); renderRecipes(); renderSetup(); }
 
+/* ---------- sync seam ----------
+   The Firestore module attaches itself to window.ovenSync. Everything here is
+   written so the app is fully usable when it never arrives - offline, blocked,
+   or signed out. Nothing below assumes a network. */
+function syncPush(){ if (window.ovenSync && window.ovenSync.push) window.ovenSync.push(); }
+
+// Called by the sync module when the remote copy changes.
+function syncApply(list){
+  store.recipes = list;
+  renderAll();
+}
+
+function setAcct(text, signedIn){
+  const box = $('#acctBox');
+  if (box){ box.className = signedIn ? '' : 'empty'; box.textContent = text; }
+  const si = $('#btnSignIn'), so = $('#btnSignOut');
+  if (si) si.style.display = signedIn ? 'none' : 'block';
+  if (so) so.style.display = signedIn ? 'block' : 'none';
+}
+
 /* ---------- boot ---------- */
 $('#tok').value = store.token;
 document.querySelectorAll('#unitSeg button').forEach(b =>
@@ -1708,6 +1737,135 @@ tick = setInterval(() => {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
+</script>
+
+<script type="module">
+/* ============================================================
+   Recipe sync — Firestore
+   Loaded as a module so it can import the SDK; the app above is a plain script
+   and runs first, so its functions exist by the time this executes. Everything
+   here fails soft: if the SDK will not load, or the user never signs in, the
+   app carries on with localStorage exactly as before.
+   ============================================================ */
+const V = 'https://www.gstatic.com/firebasejs/10.14.1';
+
+// Public project identification, not a credential. Access is controlled by the
+// Firestore rules and by signing in, not by keeping this out of the source.
+const firebaseConfig = {
+  apiKey: "AIzaSyBkgP4jmKCzmj8Nt1aGgxI2LlDBmszEMug",
+  authDomain: "anova-oven-app.firebaseapp.com",
+  projectId: "anova-oven-app",
+  storageBucket: "anova-oven-app.firebasestorage.app",
+  messagingSenderId: "633818078784",
+  appId: "1:633818078784:web:ae02198b453322be2909a5"
+};
+
+let db = null, uid = null, unsub = null, pushTimer = null, ready = false;
+let F = {};
+
+try {
+  const [appMod, authMod, fsMod] = await Promise.all([
+    import(`${V}/firebase-app.js`),
+    import(`${V}/firebase-auth.js`),
+    import(`${V}/firebase-firestore.js`)
+  ]);
+  F = { ...appMod, ...authMod, ...fsMod };
+
+  const app = F.initializeApp(firebaseConfig);
+  // Persistent cache means the kitchen still works on bad wifi, and writes made
+  // offline are sent when the connection comes back.
+  db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({}) });
+  const auth = F.getAuth(app);
+  ready = true;
+
+  const col = () => F.collection(db, 'users', uid, 'recipes');
+
+  // Merge remote and local by updatedAt, honouring local tombstones. Runs once
+  // at sign-in; after that onSnapshot keeps things current.
+  async function firstMerge(){
+    const snap = await F.getDocs(col());
+    const merged = {};
+    const tomb = {};
+    store.deleted.forEach(t => { tomb[t.id] = t.at; });
+
+    const stale = [];
+    snap.forEach(d => {
+      const r = d.data();
+      if (tomb[d.id] && tomb[d.id] > (r.updatedAt || 0)){ stale.push(d.id); return; }
+      merged[d.id] = r;
+    });
+    store.recipes.forEach(l => {
+      if (!l || !l.id) return;
+      if (!merged[l.id] || (l.updatedAt || 0) > (merged[l.id].updatedAt || 0)) merged[l.id] = l;
+    });
+
+    const list = Object.keys(merged).map(k => merged[k]);
+    syncApply(list);
+    await Promise.all([
+      ...stale.map(id => F.deleteDoc(F.doc(db, 'users', uid, 'recipes', id))),
+      ...list.map(r => F.setDoc(F.doc(db, 'users', uid, 'recipes', r.id), r))
+    ]);
+  }
+
+  function watch(){
+    if (unsub) unsub();
+    unsub = F.onSnapshot(col(), snap => {
+      // Ignore our own in-flight writes; they are already in local state.
+      if (snap.metadata.hasPendingWrites) return;
+      const list = [];
+      snap.forEach(d => list.push(d.data()));
+      const now = JSON.stringify(store.recipes.map(r => [r.id, r.updatedAt]).sort());
+      const next = JSON.stringify(list.map(r => [r.id, r.updatedAt]).sort());
+      if (now !== next) syncApply(list);
+    }, () => {});
+  }
+
+  F.onAuthStateChanged(auth, async user => {
+    if (!user){
+      uid = null;
+      if (unsub){ unsub(); unsub = null; }
+      setAcct('Recipes are stored on this phone only.', false);
+      return;
+    }
+    uid = user.uid;
+    setAcct('Synced as ' + (user.email || 'your Google account'), true);
+    try { await firstMerge(); watch(); }
+    catch (e){ setAcct('Signed in, but syncing failed — recipes are safe on this phone.', true); }
+  });
+
+  window.ovenSync = {
+    push(){
+      if (!uid) return;
+      // Debounced: the editor writes the whole list on every save.
+      clearTimeout(pushTimer);
+      pushTimer = setTimeout(async () => {
+        try {
+          const rs = store.recipes;
+          await Promise.all(rs.map(r => F.setDoc(F.doc(db, 'users', uid, 'recipes', r.id), r)));
+          const gone = store.deleted.slice(-50);
+          await Promise.all(gone.map(t => F.deleteDoc(F.doc(db, 'users', uid, 'recipes', t.id)).catch(() => {})));
+        } catch (e){ /* offline: the persistent cache will flush it later */ }
+      }, 600);
+    },
+    signIn(){
+      const p = new F.GoogleAuthProvider();
+      // An installed PWA often blocks popups; fall back to a redirect.
+      F.signInWithPopup(auth, p).catch(() => F.signInWithRedirect(auth, p));
+    },
+    signOut(){ F.signOut(auth); }
+  };
+} catch (e){
+  window.ovenSync = null;
+  setAcct('Sync unavailable — recipes are stored on this phone only.', false);
+}
+
+document.getElementById('btnSignIn').onclick = () => {
+  if (!ready || !window.ovenSync){ toast('Sync is unavailable right now'); return; }
+  window.ovenSync.signIn();
+};
+document.getElementById('btnSignOut').onclick = () => {
+  if (window.ovenSync) window.ovenSync.signOut();
+};
 </script>
 </body>
 </html>

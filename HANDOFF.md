@@ -316,6 +316,34 @@ confirmed on hardware.**
 It exists so a single recipe can soak a baking steel, wait while the food goes
 in, and then bake - see "Salt rolls" in the library.
 
+## Recipe sync (Firestore)
+
+Recipes live in Firestore under `users/{uid}/recipes/{recipeId}`, one document
+per recipe, with Google sign-in. Rules are in `firestore.rules` and must be
+pasted into the Firebase console by hand - there is no Node on this Mac, so no
+firebase CLI.
+
+- The SDK is imported from the gstatic CDN inside an **inline
+  `<script type="module">`** at the end of `index.html`. The main app stays a
+  plain script and runs first, so its functions exist when the module executes.
+- **localStorage remains the local source of truth.** The module reads and
+  writes it through `syncApply()` / `store.recipes`, so the app is fully usable
+  signed out, offline, or if the SDK never loads. Every failure path there is
+  swallowed deliberately.
+- `persistentLocalCache` keeps Firestore working on bad kitchen wifi and flushes
+  writes when the connection returns.
+- Merge is last-write-wins per recipe on `updatedAt`, with local tombstones
+  (`anova.deleted`) beating an older remote copy. `firstMerge()` runs once at
+  sign-in; `onSnapshot` keeps it current after that.
+- `syncPush()` is called after every local mutation and is debounced 600 ms,
+  because the editor rewrites the whole list on each save.
+- **The Anova token is deliberately not synced.** It stays in `anova.token` on
+  the phone, per "things not to break".
+
+The web config in the module is public project identification, not a secret -
+Google intends it to ship in client code, and access is gated by the rules and
+sign-in.
+
 ## Getting recipes onto the phone
 
 Three routes, in order of how little the owner has to do:
