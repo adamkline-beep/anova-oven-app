@@ -389,6 +389,14 @@ skipped when its anchor matched twice - so the copy in `btnSave` never gained
 the tags line. Both now call one `readEditor()`. Do not duplicate that block
 again, and do not write a patch that skips silently when it does not match.
 
+## Adding a recipe
+
+There is a project skill at `.claude/skills/add-recipe/` covering the workflow,
+the constraints the oven enforces silently, and a validation block that runs a
+candidate recipe through the app's own `validate()` and stage compiler before it
+is pushed. Use it rather than reasoning about the rules from memory - the oven
+refuses an invalid cook without saying anything, which is expensive to diagnose.
+
 ## Getting recipes onto the phone
 
 Three routes, in order of how little the owner has to do:
