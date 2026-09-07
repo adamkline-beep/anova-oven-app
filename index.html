@@ -151,6 +151,7 @@ main{padding:var(--pad);max-width:640px;margin:0 auto}
 .ovn{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;
   border-radius:6px;background:var(--raised);color:var(--ember);font-size:12px;font-weight:600}
 .ovhold{width:100%;color:var(--ember);font-size:13px;margin-top:3px}
+.vmissing{color:var(--dim);font-size:14px;font-style:italic}
 .rsec{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ember);
   margin:18px 0 7px;font-weight:600}
 .rbody{white-space:pre-wrap;line-height:1.5;font-size:14.5px;color:var(--text)}
@@ -1152,6 +1153,14 @@ function drawView(){
     }
   }
 
+  const missing = (label) => {
+    const t = el('h3','rsec'); t.textContent = label;
+    const d = el('div','vmissing');
+    d.textContent = 'Nothing here yet — tap “Edit this recipe” to add it.';
+    box.append(t, d);
+  };
+
+  if (!(r.ingredients && r.ingredients.trim())) missing('Ingredients');
   if (r.ingredients && r.ingredients.trim()){
     const t = el('h3','rsec'); t.textContent = 'Ingredients'; box.appendChild(t);
     const list = el('div','ilist');
@@ -1173,6 +1182,7 @@ function drawView(){
     box.appendChild(list);
   }
 
+  if (!(r.steps && r.steps.trim())) missing('Method');
   if (r.steps && r.steps.trim()){
     const t = el('h3','rsec'); t.textContent = 'Method'; box.appendChild(t);
     // Split on blank lines so a numbered step keeps its wrapped continuation.
@@ -1937,13 +1947,36 @@ $('#btnLibrary').onclick = () => {
       const box = el('div'); box.style.marginTop = '12px';
       list.forEach(raw => {
         const r = normalizeRecipe(raw);
+        // Matching by name so a library recipe that has been improved replaces
+        // the copy already on the phone instead of sitting beside it.
+        const have = store.recipes.findIndex(x =>
+          (x.name || '').trim().toLowerCase() === r.name.trim().toLowerCase());
         const c = el('div','card');
         c.innerHTML = '<div class="nm">' + esc(r.name) + '</div>' +
                       '<div class="sub">' + esc(summarize(r)) + '</div>' +
+                      (have >= 0 ? '<div class="sub" style="color:var(--ember)">You already have this one</div>' : '') +
                       '<div class="go"></div>';
-        const b = el('button'); b.className = 'primary'; b.textContent = 'Add';
-        b.onclick = () => { closeSheet(); addRecipes([raw], 'the library'); };
-        c.querySelector('.go').append(b);
+        const b = el('button'); b.className = 'primary';
+        b.textContent = have >= 0 ? 'Update mine' : 'Add';
+        b.onclick = () => {
+          closeSheet();
+          if (have < 0){ addRecipes([raw], 'the library'); return; }
+          const rs = store.recipes;
+          const keep = rs[have];
+          const next = normalizeRecipe(raw);
+          // Keep what belongs to this phone: its id, and any photo added here.
+          next.id = keep.id;
+          if (!next.photo && keep.photo) next.photo = keep.photo;
+          if (keep.hasPhoto) next.hasPhoto = true;
+          rs[have] = touch(next);
+          store.recipes = rs; syncPush(); renderAll(); go('recipes');
+          toast('Updated “' + next.name + '”');
+        };
+        if (have >= 0){
+          const b2 = el('button'); b2.textContent = 'Add a copy';
+          b2.onclick = () => { closeSheet(); addRecipes([raw], 'the library'); };
+          c.querySelector('.go').append(b, b2);
+        } else c.querySelector('.go').append(b);
         box.appendChild(c);
       });
       inner.insertBefore(box, cl);
