@@ -80,6 +80,12 @@ footer button{flex:1;padding:17px 0;border-radius:13px;font-size:17px;font-weigh
 footer button.go{background:var(--ember);color:#241703;border-color:transparent}
 footer button:disabled{opacity:.3}
 
+.allsteps{margin-top:2px}
+.astep{display:flex;gap:11px;align-items:baseline;padding:11px 2px;
+  border-bottom:1px solid var(--line);font-size:16.5px;line-height:1.45;white-space:pre-wrap}
+.an{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;
+  border-radius:7px;background:var(--raised);color:var(--ember);font-size:12.5px;
+  font-weight:600;flex:none}
 .pick{padding:17px 18px;margin-bottom:11px;border-radius:14px;background:var(--surface);
   border:1px solid var(--line);cursor:pointer}
 .pname{font-size:21px;font-family:'Barlow Condensed','Barlow',sans-serif}
@@ -231,6 +237,28 @@ function parseIng(text){
   });
 }
 
+// Steps may be separated by blank lines, or just numbered one per line. Both
+// are how people actually write a method, so accept either.
+function splitSteps(text){
+  const t = String(text || '').trim();
+  if (!t) return [];
+  const byGap = t.split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
+  if (byGap.length > 1) return byGap;
+  // One block: split it on numbered starts if it has them.
+  const lines = t.split('\n');
+  const numbered = lines.filter(l => /^\s*(\d+[.)]|step\s+\d+)/i.test(l)).length;
+  if (numbered > 1){
+    const out = [];
+    lines.forEach(l => {
+      if (/^\s*(\d+[.)]|step\s+\d+)/i.test(l)) out.push(l.trim());
+      else if (out.length && l.trim()) out[out.length - 1] += '\n' + l.trim();
+      else if (l.trim()) out.push(l.trim());
+    });
+    return out;
+  }
+  return byGap;
+}
+
 function durationIn(text){
   const m = String(text || '').match(
     /(\d+)\s*(?:[-–—]\s*(\d+))?\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|[smh])\b/i);
@@ -251,7 +279,7 @@ let STEPS = [], ING = [];
 function loadRecipe(r){
   R = r;
   LINES = complimentLines();
-  STEPS = String(r.steps || '').split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
+  STEPS = splitSteps(r.steps);
   ING = parseIng(r.ingredients);
   ticked = {}; page = 0; timer = null;
   try { localStorage.setItem('bossy.last', JSON.stringify(r)); } catch (e){}
@@ -296,7 +324,7 @@ function draw(){
       c.appendChild(n);
       const bits = [];
       if (r.servings) bits.push(r.servings);
-      const st = String(r.steps || '').split(/\n\s*\n/).filter(x => x.trim()).length;
+      const st = splitSteps(r.steps).length;
       if (st) bits.push(st + ' step' + (st === 1 ? '' : 's'));
       if (bits.length){ const d = el('div','pmeta'); d.textContent = bits.join('  ·  '); c.appendChild(d); }
       c.onclick = () => loadRecipe(r);
@@ -345,10 +373,18 @@ function draw(){
       main.appendChild(row);
     });
 
-    if (R.oven && R.oven.length){
-      const o = el('div','oven');
-      o.innerHTML = '<b>The oven does this</b>' + R.oven.map(x => escapeHtml(x)).join('<br>');
-      main.appendChild(o);
+    if (STEPS.length){
+      const t = el('div','sec'); t.textContent = 'The method, all of it';
+      main.appendChild(t);
+      const wrap = el('div','allsteps');
+      STEPS.forEach((x, i) => {
+        const row = el('div','astep');
+        const n = el('span','an'); n.textContent = (i + 1);
+        const b = el('span'); b.textContent = x.replace(/^\s*(\d+[.)]|step\s+\d+[:.]?)\s*/i, '');
+        row.append(n, b);
+        wrap.appendChild(row);
+      });
+      main.appendChild(wrap);
     }
 
     main.appendChild(compliment('While you are here'));

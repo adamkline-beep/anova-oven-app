@@ -1196,6 +1196,28 @@ function logBake(r){
   $('#sheet').classList.add('on');
 }
 
+// Steps may be separated by blank lines, or just numbered one per line. Both
+// are how people write a method, so accept either - and the helper page uses
+// exactly the same rule.
+function splitSteps(text){
+  const t = String(text || '').trim();
+  if (!t) return [];
+  const byGap = t.split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
+  if (byGap.length > 1) return byGap;
+  const lines = t.split('\n');
+  const numbered = lines.filter(l => /^\s*(\d+[.)]|step\s+\d+)/i.test(l)).length;
+  if (numbered > 1){
+    const out = [];
+    lines.forEach(l => {
+      if (/^\s*(\d+[.)]|step\s+\d+)/i.test(l)) out.push(l.trim());
+      else if (out.length && l.trim()) out[out.length - 1] += '\n' + l.trim();
+      else if (l.trim()) out.push(l.trim());
+    });
+    return out;
+  }
+  return byGap;
+}
+
 /* ---------- Bossy mode ----------
    A companion screen for whoever is reading the recipe aloud. The whole recipe
    travels inside the link, so it needs no account and no permission grant -
@@ -1215,8 +1237,7 @@ function forHelper(r){
     name: r.name || 'Recipe',
     servings: r.servings || '',
     ingredients: r.ingredients || '',
-    steps: r.steps || '',
-    oven: (r.usesOven !== false && r.stages) ? r.stages.map((st, i) => (i+1) + '. ' + stageLine(st)) : []
+    steps: r.steps || ''
   };
 }
 
@@ -1417,8 +1438,7 @@ function drawView(){
   if (!(r.steps && r.steps.trim())) missing('Method');
   if (r.steps && r.steps.trim()){
     const t = el('h3','rsec'); t.textContent = 'Method'; box.appendChild(t);
-    // Split on blank lines so a numbered step keeps its wrapped continuation.
-    const steps = r.steps.split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
+    const steps = splitSteps(r.steps);
     steps.forEach((txt, i) => {
       const row = el('div','srow' + (ticked['s'+i] ? ' done' : ''));
       const body = el('div'); body.textContent = txt;
