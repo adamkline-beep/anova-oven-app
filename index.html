@@ -151,10 +151,14 @@ main{padding:var(--pad);max-width:640px;margin:0 auto}
 .ovn{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;
   border-radius:6px;background:var(--raised);color:var(--ember);font-size:12px;font-weight:600}
 .ovhold{width:100%;color:var(--ember);font-size:13px;margin-top:3px}
-.amts{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
-.amt{background:var(--raised);border:1px solid var(--line);border-radius:8px;
-  padding:5px 9px;font-size:13px;color:var(--dim)}
-.amt b{color:var(--ember);font-weight:600;font-variant-numeric:tabular-nums;margin-right:2px}
+.stepings{margin-top:11px;padding-top:9px;border-top:1px solid var(--line)}
+.sing{display:flex;gap:11px;align-items:flex-start;padding:7px 0;cursor:pointer;font-size:14.5px}
+.sbox{width:19px;height:19px;border-radius:5px;border:1.5px solid var(--line);
+  flex:none;margin-top:2px;position:relative}
+.sing.done{opacity:.42;text-decoration:line-through}
+.sing.done .sbox{background:var(--ember);border-color:var(--ember)}
+.stext{flex:1;line-height:1.45}
+.stext b{color:var(--ember);font-weight:600;font-variant-numeric:tabular-nums}
 .trow{display:flex;align-items:center;gap:9px;margin-top:9px}
 .tbtn{font-size:13px;padding:6px 11px;border-radius:8px;background:var(--raised);
   border:1px solid var(--line);color:var(--ember)}
@@ -1479,23 +1483,29 @@ function drawView(){
       body.onclick = () => { ticked['s'+i] = !ticked['s'+i]; drawView(); };
       row.appendChild(body);
 
-      // The amounts this step needs, scaled with everything else.
+      // What this step needs, listed under it and tickable as you go - the
+      // amounts scale with the rest of the recipe.
       const hits = mentionedIn(txt, lines);
       if (hits.length){
         const names = {};
         hits.forEach(h => { names[h.key] = (names[h.key] || 0) + 1; });
-        const amts = el('div','amts');
+        const list = el('div','stepings');
         hits.forEach(h => {
+          const key = 'si' + i + '_' + h.idx;
           const sc = scaleLine(h.line, viewScale);
-          const chip = el('span','amt');
+          const r2 = el('div','sing' + (ticked[key] ? ' done' : ''));
+          const bx = el('span','sbox');
+          const tx = el('span','stext');
           const q = el('b');
           q.textContent = showQty(sc.qty, sc.unit) + (sc.unit ? ' ' + sc.unit : '');
-          chip.appendChild(q);
+          tx.appendChild(q);
           const head = names[h.key] > 1 ? headingFor(lines, h.idx) : '';
-          chip.appendChild(document.createTextNode(' ' + h.line.text + (head ? ' · ' + head.toLowerCase() : '')));
-          amts.appendChild(chip);
+          tx.appendChild(document.createTextNode(' ' + h.line.text + (head ? ' · ' + head.toLowerCase() : '')));
+          r2.append(bx, tx);
+          r2.onclick = e => { e.stopPropagation(); ticked[key] = !ticked[key]; drawView(); };
+          list.appendChild(r2);
         });
-        row.appendChild(amts);
+        row.appendChild(list);
       }
 
       const secs = durationIn(txt);

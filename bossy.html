@@ -80,12 +80,17 @@ footer button{flex:1;padding:17px 0;border-radius:13px;font-size:17px;font-weigh
 footer button.go{background:var(--ember);color:#241703;border-color:transparent}
 footer button:disabled{opacity:.3}
 
-.amts{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
-.amts.small{margin-top:7px}
-.amt{background:var(--raised);border:1px solid var(--line);border-radius:9px;
-  padding:6px 11px;font-size:15px;color:var(--text)}
-.amts.small .amt{font-size:13.5px;padding:4px 9px}
-.amt b{color:var(--ember);font-weight:600;font-variant-numeric:tabular-nums}
+.stepings{margin-top:20px;padding-top:14px;border-top:1px solid var(--line)}
+.stepings.small{margin-top:8px;padding-top:7px;border-top:0}
+.sing{display:flex;gap:13px;align-items:flex-start;padding:10px 0;cursor:pointer;font-size:18px}
+.stepings.small .sing{padding:3px 0;font-size:14px;color:var(--dim)}
+.sbox{width:23px;height:23px;border-radius:6px;border:2px solid var(--line);
+  flex:none;margin-top:2px}
+.sing.done{opacity:.4;text-decoration:line-through}
+.sing.done .sbox{background:var(--ember);border-color:var(--ember)}
+.stext{flex:1;line-height:1.4}
+.stext b{color:var(--ember);font-weight:600;font-variant-numeric:tabular-nums}
+.stepings.small .stext b{color:var(--ember)}
 .allsteps{margin-top:2px}
 .astep{display:flex;gap:11px;align-items:baseline;padding:11px 2px;
   border-bottom:1px solid var(--line);font-size:16.5px;line-height:1.45;white-space:pre-wrap}
@@ -422,7 +427,7 @@ function draw(){
         const b = el('div');
         const line = el('div'); line.textContent = x.replace(/^\s*(\d+[.)]|step\s+\d+[:.]?)\s*/i, '');
         b.appendChild(line);
-        const amt = amountsFor(x, true);
+        const amt = amountsFor(x, true, 'o' + i);
         if (amt) b.appendChild(amt);
         row.append(n, b);
         wrap.appendChild(row);
@@ -461,7 +466,8 @@ function draw(){
   const no = el('div','stepno'); no.textContent = 'Step ' + page + ' of ' + STEPS.length;
   const body = el('div','steptext'); body.textContent = txt;
   main.append(no, body);
-  main.appendChild(amountsFor(txt));
+  const amts = amountsFor(txt, false, 'p' + page);
+  if (amts) main.appendChild(amts);
 
   const secs = durationIn(txt);
   if (secs){
@@ -490,20 +496,26 @@ function draw(){
   foot.append(back, next);
 }
 
-// The amounts a step needs, so nobody has to scroll back to the list.
-function amountsFor(txt, small){
+// What a step needs, listed under it. On the step screen they are tickable,
+// because that is what someone reading aloud actually does with them.
+function amountsFor(txt, small, stepKey){
   const hits = mentionedIn(txt, ING);
-  const wrap = el('div', small ? 'amts small' : 'amts');
-  if (!hits.length) return small ? null : wrap;
+  if (!hits.length) return null;
   const names = {};
-  hits.forEach(h => { const k = h.key; names[k] = (names[k] || 0) + 1; });
+  hits.forEach(h => { names[h.key] = (names[h.key] || 0) + 1; });
+  const wrap = el('div', small ? 'stepings small' : 'stepings');
   hits.forEach(h => {
-    const chip = el('span','amt');
+    const key = stepKey + '_' + h.idx;
+    const row = el('div','sing' + (!small && ticked[key] ? ' done' : ''));
+    if (!small) row.appendChild(el('span','sbox'));
+    const tx = el('span','stext');
     const q = el('b'); q.textContent = h.line.q || '';
-    chip.appendChild(q);
+    tx.appendChild(q);
     const head = names[h.key] > 1 ? headingFor(ING, h.idx) : '';
-    chip.appendChild(document.createTextNode(' ' + h.line.n + (head ? ' · ' + head.toLowerCase() : '')));
-    wrap.appendChild(chip);
+    tx.appendChild(document.createTextNode(' ' + h.line.n + (head ? ' · ' + head.toLowerCase() : '')));
+    row.appendChild(tx);
+    if (!small) row.onclick = () => { ticked[key] = !ticked[key]; draw(); };
+    wrap.appendChild(row);
   });
   return wrap;
 }
