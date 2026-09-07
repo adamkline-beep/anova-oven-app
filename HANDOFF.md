@@ -365,6 +365,30 @@ needed - the existing `users/{uid}/**` rule already covers it.
   external `https://` URL and is still validated, so a recipe from a paste, a
   file or the library cannot smuggle in `javascript:` or a data URI.
 
+## Bake log, paste import, step timers
+
+- **Bakes** live on the recipe as `bakes[]` - `{id, at, changed, result}`, newest
+  first, capped at 60. Logged from the cooking view; two questions, what changed
+  and how it came out. Deliberately part of the recipe document so it syncs and
+  scales with it.
+- **Paste import** (`parsePastedRecipe`) splits written prose into name,
+  servings, ingredients, method and notes. It looks for `Ingredients` /
+  `Instructions` headings, and when there are none it infers the list from lines
+  that begin with a quantity, ending it at the first sentence. The result opens
+  **in the editor for review, never saved blind** - the split is a guess and the
+  cook should see it.
+- **Step timers** (`durationIn`) read a duration out of a step - "about 60
+  minutes", "2-3 min", "20-24 minutes" - taking the longer end of a range.
+  Memory only, not persisted: a timer is something you stand next to. They are
+  for the proofs and rests either side of the cook; the oven times its own
+  stages.
+
+**Fixed in passing: tags were never saved.** Two editor handlers each copied the
+same block of field reads, and an earlier patch used a guard that silently
+skipped when its anchor matched twice - so the copy in `btnSave` never gained
+the tags line. Both now call one `readEditor()`. Do not duplicate that block
+again, and do not write a patch that skips silently when it does not match.
+
 ## Getting recipes onto the phone
 
 Three routes, in order of how little the owner has to do:
