@@ -426,6 +426,12 @@ pre{
   <div class="hint">Signing in keeps your recipes in your own Google account, so they survive this phone and appear on any device you sign in from. Your oven token is never synced &mdash; it stays on this phone.</div>
 
   <h2 class="sec">Bossy mode</h2>
+  <div id="shareBox" class="empty">Not shared yet.</div>
+  <button class="btn slim" id="btnShareOn" style="margin-top:9px">Share my recipes with a helper</button>
+  <button class="btn slim" id="btnShareLink" style="margin-top:9px;display:none">Send the link</button>
+  <button class="btn slim" id="btnShareOff" style="margin-top:9px;display:none">Stop sharing</button>
+  <div class="hint">Gives one person a page listing your recipes, so they can pick one themselves instead of waiting for a link each time. The address is a long random one, and holds only ingredients, method and a description of the oven settings &mdash; no photos, no account, and nothing they can change.</div>
+
   <div class="field">
     <label for="rCompliments">Compliments</label>
     <textarea id="rCompliments" class="ta" style="min-height:110px" placeholder="One per line. Leave empty for the built-in ones."></textarea>
@@ -497,6 +503,21 @@ const store = {
   get recipes(){ try { return JSON.parse(localStorage.getItem('anova.recipes')||'[]'); } catch { return []; } },
   set recipes(v){ localStorage.setItem('anova.recipes', JSON.stringify(v)); },
   // Tombstones: a deleted recipe has to stay deleted when another device syncs.
+  // Unguessable, generated once, and the only thing standing between the shared
+  // list and the public - so it is 32 hex characters from crypto, not a counter.
+  get shareId(){
+    let v = localStorage.getItem('anova.shareId');
+    if (!v){
+      const a = new Uint8Array(16);
+      (crypto.getRandomValues ? crypto : { getRandomValues: x => x.forEach((_, i) => x[i] = Math.floor(Math.random()*256)) })
+        .getRandomValues(a);
+      v = Array.from(a).map(b => b.toString(16).padStart(2, '0')).join('');
+      localStorage.setItem('anova.shareId', v);
+    }
+    return v;
+  },
+  get sharing(){ return localStorage.getItem('anova.sharing') === '1'; },
+  set sharing(v){ localStorage.setItem('anova.sharing', v ? '1' : '0'); },
   get compliments(){
     try {
       const v = JSON.parse(localStorage.getItem('anova.compliments') || 'null');
@@ -1184,6 +1205,37 @@ function b64url(str){
   let bin = '';
   bytes.forEach(b => { bin += String.fromCharCode(b); });
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// The helper's copy of a recipe: enough to read aloud, nothing that could
+// drive the oven or identify anything.
+function forHelper(r){
+  return {
+    id: r.id,
+    name: r.name || 'Recipe',
+    servings: r.servings || '',
+    ingredients: r.ingredients || '',
+    steps: r.steps || '',
+    oven: (r.usesOven !== false && r.stages) ? r.stages.map((st, i) => (i+1) + '. ' + stageLine(st)) : []
+  };
+}
+
+function sharedPayload(){
+  return {
+    updatedAt: Date.now(),
+    compliments: store.compliments,
+    recipes: store.recipes.filter(r => (r.steps || '').trim()).map(forHelper)
+  };
+}
+
+function helperLink(){
+  const base = location.href.split('#')[0].split('?')[0].replace(/[^/]*$/, '');
+  return base + 'bossy.html?s=' + store.shareId;
+}
+
+function pushShared(){
+  if (!store.sharing) return;
+  if (window.ovenSync && window.ovenSync.publish) window.ovenSync.publish(store.shareId, sharedPayload());
 }
 
 function bossyLink(r){
@@ -2099,9 +2151,42 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => go(b.data
 
 $('#btnViewBack').onclick = () => go('recipes');
 $('#rSearch').oninput = () => renderRecipes();
+function drawShare(){
+  const on = store.sharing;
+  const box = $('#shareBox');
+  box.className = on ? '' : 'empty';
+  box.textContent = on
+    ? 'Sharing ' + sharedPayload().recipes.length + ' recipes. Updates whenever you change one.'
+    : 'Not shared yet.';
+  $('#btnShareOn').style.display = on ? 'none' : 'block';
+  $('#btnShareLink').style.display = on ? 'block' : 'none';
+  $('#btnShareOff').style.display = on ? 'block' : 'none';
+}
+
+$('#btnShareOn').onclick = () => {
+  if (!(window.ovenSync && window.ovenSync.signedIn && window.ovenSync.signedIn())){
+    toast('Sign in first — the list lives in your account'); return;
+  }
+  store.sharing = true; pushShared(); drawShare(); toast('Shared');
+};
+$('#btnShareOff').onclick = () => {
+  store.sharing = false;
+  if (window.ovenSync && window.ovenSync.unpublish) window.ovenSync.unpublish(store.shareId);
+  drawShare(); toast('Stopped sharing');
+};
+$('#btnShareLink').onclick = async () => {
+  const url = helperLink();
+  const data = { title: 'Bossy', url: url };
+  if (navigator.share){ try { await navigator.share(data); return; } catch (e){ if (e && e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(url); toast('Link copied'); }
+  catch { toast(url); }
+};
+drawShare();
+
 $('#rCompliments').value = store.compliments.join('\n');
 $('#btnComplimentsSave').onclick = () => {
   store.compliments = $('#rCompliments').value.split('\n').map(x => x.trim()).filter(Boolean);
+  pushShared();
   toast(store.compliments.length ? 'Saved ' + store.compliments.length : 'Using the built-in ones');
 };
 
@@ -2414,7 +2499,10 @@ function renderAll(){ quickSig = null; renderCook(); renderRecipes(); renderSetu
    The Firestore module attaches itself to window.ovenSync. Everything here is
    written so the app is fully usable when it never arrives - offline, blocked,
    or signed out. Nothing below assumes a network. */
-function syncPush(){ if (window.ovenSync && window.ovenSync.push) window.ovenSync.push(); }
+function syncPush(){
+  if (window.ovenSync && window.ovenSync.push) window.ovenSync.push();
+  pushShared();
+}
 
 // Called by the sync module when the remote copy changes.
 function syncApply(list){
@@ -2591,6 +2679,19 @@ try {
     },
     signOut(){ F.signOut(auth); },
     signedIn(){ return !!uid; },
+    // One public document, addressed by an unguessable id. Stored as a JSON
+    // string so the helper's page can read it over plain REST without the SDK.
+    async publish(shareId, payload){
+      if (!uid) return;
+      try {
+        await F.setDoc(F.doc(db, 'shared', shareId),
+          { owner: uid, at: Date.now(), data: JSON.stringify(payload) });
+      } catch (e){}
+    },
+    async unpublish(shareId){
+      if (!uid) return;
+      try { await F.deleteDoc(F.doc(db, 'shared', shareId)); } catch (e){}
+    },
     // Firebase Storage needs a paid plan for a bucket, so a photo goes in its
     // own Firestore document instead - free, synced, and kept out of the recipe
     // document so it is not re-sent on every edit.

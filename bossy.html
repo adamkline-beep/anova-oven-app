@@ -80,6 +80,10 @@ footer button{flex:1;padding:17px 0;border-radius:13px;font-size:17px;font-weigh
 footer button.go{background:var(--ember);color:#241703;border-color:transparent}
 footer button:disabled{opacity:.3}
 
+.pick{padding:17px 18px;margin-bottom:11px;border-radius:14px;background:var(--surface);
+  border:1px solid var(--line);cursor:pointer}
+.pname{font-size:21px;font-family:'Barlow Condensed','Barlow',sans-serif}
+.pmeta{color:var(--dim);font-size:14px;margin-top:3px}
 .empty{padding:40px var(--pad);color:var(--dim);text-align:center;line-height:1.6}
 .empty h2{color:var(--text);font-size:22px;margin-bottom:10px}
 .bar{height:3px;background:var(--raised);border-radius:2px;overflow:hidden;margin:0 var(--pad)}
@@ -118,7 +122,10 @@ function unb64url(s){
    2. #r= in the fragment, so links sent before that was fixed still work.
    3. Whatever was opened last, kept on this device. That makes the home-screen
       icon reliable, and the page usable with no signal at all. */
-let R = null, restored = false;
+let R = null, restored = false, LIST = null, LOADING = false, LOADERR = '';
+
+const PROJECT = 'anova-oven-app';
+const APIKEY  = 'AIzaSyBkgP4jmKCzmj8Nt1aGgxI2LlDBmszEMug';
 
 function readPayload(){
   const q = new URLSearchParams(location.search).get('r');
@@ -126,17 +133,52 @@ function readPayload(){
   const h = location.hash.replace(/^#r=/, '');
   return h || '';
 }
+function shareId(){
+  return new URLSearchParams(location.search).get('s') ||
+         localStorage.getItem('bossy.share') || '';
+}
 
 try {
   const raw = readPayload();
   if (raw){
     R = JSON.parse(unb64url(raw));
     try { localStorage.setItem('bossy.last', JSON.stringify(R)); } catch (e){}
-  } else {
-    const kept = localStorage.getItem('bossy.last');
-    if (kept){ R = JSON.parse(kept); restored = true; }
   }
 } catch (e){ R = null; }
+
+// A shared list, read straight over REST so this page loads no SDK at all.
+async function loadList(){
+  const id = shareId();
+  if (!id) return;
+  try { localStorage.setItem('bossy.share', id); } catch (e){}
+
+  const cached = localStorage.getItem('bossy.list');
+  if (cached){ try { LIST = JSON.parse(cached); } catch (e){} }
+
+  LOADING = !LIST; draw();
+  try {
+    const url = 'https://firestore.googleapis.com/v1/projects/' + PROJECT +
+                '/databases/(default)/documents/shared/' + encodeURIComponent(id) + '?key=' + APIKEY;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error(res.status === 404 ? 'not-found' : String(res.status));
+    const doc = await res.json();
+    LIST = JSON.parse(doc.fields.data.stringValue);
+    try { localStorage.setItem('bossy.list', JSON.stringify(LIST)); } catch (e){}
+    LINES = complimentLines();
+    LOADERR = '';
+  } catch (e){
+    // A cached list beats an error page when the kitchen has no signal.
+    LOADERR = LIST ? '' : (String(e.message) === 'not-found'
+      ? 'That list is not being shared any more.'
+      : 'Could not reach the list, and nothing is saved on this phone yet.');
+  }
+  LOADING = false; draw();
+}
+
+if (!R && !shareId()){
+  const kept = localStorage.getItem('bossy.last');
+  if (kept){ try { R = JSON.parse(kept); restored = true; } catch (e){} }
+}
 
 /* ---------- compliments ---------- */
 const DEFAULTS = [
@@ -151,7 +193,12 @@ const DEFAULTS = [
   'You have excellent timing.',
   'The dough can tell you know what you are doing.'
 ];
-const LINES = (R && Array.isArray(R.compliments) && R.compliments.length) ? R.compliments : DEFAULTS;
+function complimentLines(){
+  if (LIST && Array.isArray(LIST.compliments) && LIST.compliments.length) return LIST.compliments;
+  if (R && Array.isArray(R.compliments) && R.compliments.length) return R.compliments;
+  return DEFAULTS;
+}
+let LINES = complimentLines();
 let complimentIdx = Math.floor(Math.random() * LINES.length);
 function nextCompliment(){ complimentIdx = (complimentIdx + 1 + Math.floor(Math.random() * (LINES.length - 1))) % LINES.length; }
 
@@ -200,8 +247,16 @@ function hms(s){
 }
 
 /* ---------- state ---------- */
-const STEPS = R ? String(R.steps || '').split(/\n\s*\n/).map(s => s.trim()).filter(Boolean) : [];
-const ING = R ? parseIng(R.ingredients) : [];
+let STEPS = [], ING = [];
+function loadRecipe(r){
+  R = r;
+  LINES = complimentLines();
+  STEPS = String(r.steps || '').split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
+  ING = parseIng(r.ingredients);
+  ticked = {}; page = 0; timer = null;
+  try { localStorage.setItem('bossy.last', JSON.stringify(r)); } catch (e){}
+  window.scrollTo(0, 0); draw();
+}
 let page = 0;                 // 0 = mise en place, 1..n = steps, n+1 = done
 let ticked = {};
 let timer = null, tickHandle = null;
@@ -223,6 +278,33 @@ function clearTimer(){ timer = null; draw(); }
 function draw(){
   const main = $('#main'), foot = $('#foot');
   main.innerHTML = ''; foot.innerHTML = '';
+
+  // A shared list, with nothing picked from it yet.
+  if (!R && (LIST || LOADING || LOADERR || shareId())){
+    $('#title').textContent = 'Bossy';
+    $('#who').textContent = 'Pick a recipe';
+    $('#bar').style.width = '0';
+    if (LOADING){ main.innerHTML = '<div class="empty">Fetching the recipes…</div>'; return; }
+    if (LOADERR){ main.innerHTML = '<div class="empty"><h2>Nothing to show</h2>' + escapeHtml(LOADERR) + '</div>'; return; }
+    const rs = (LIST && LIST.recipes) || [];
+    if (!rs.length){ main.innerHTML = '<div class="empty"><h2>No recipes yet</h2>Nothing has been shared with you.</div>'; return; }
+    const lead = el('div','lead'); lead.textContent = 'Tap one to read it out.';
+    main.appendChild(lead);
+    rs.forEach(r => {
+      const c = el('div','pick');
+      const n = el('div','pname'); n.textContent = r.name || 'Untitled';
+      c.appendChild(n);
+      const bits = [];
+      if (r.servings) bits.push(r.servings);
+      const st = String(r.steps || '').split(/\n\s*\n/).filter(x => x.trim()).length;
+      if (st) bits.push(st + ' step' + (st === 1 ? '' : 's'));
+      if (bits.length){ const d = el('div','pmeta'); d.textContent = bits.join('  ·  '); c.appendChild(d); }
+      c.onclick = () => loadRecipe(r);
+      main.appendChild(c);
+    });
+    main.appendChild(compliment('While you choose'));
+    return;
+  }
 
   if (!R){
     main.innerHTML = '<div class="empty"><h2>Nothing to boss yet</h2>' +
@@ -274,7 +356,11 @@ function draw(){
     const go = el('button','go'); go.textContent = STEPS.length ? 'Start' : 'No steps to read';
     go.disabled = !STEPS.length;
     go.onclick = () => { page = 1; nextCompliment(); clearTimer(); window.scrollTo(0,0); draw(); };
-    foot.appendChild(go);
+    if (LIST && LIST.recipes && LIST.recipes.length > 1){
+      const back = el('button'); back.textContent = 'All recipes';
+      back.onclick = () => { R = null; clearTimer(); window.scrollTo(0,0); draw(); };
+      foot.append(back, go);
+    } else foot.appendChild(go);
     return;
   }
 
@@ -284,7 +370,11 @@ function draw(){
     main.appendChild(compliment('One more, you earned it'));
     const again = el('button'); again.textContent = 'Back to the start';
     again.onclick = () => { page = 0; draw(); };
-    foot.appendChild(again);
+    if (LIST && LIST.recipes && LIST.recipes.length > 1){
+      const list = el('button'); list.textContent = 'All recipes';
+      list.onclick = () => { R = null; page = 0; draw(); };
+      foot.append(list, again);
+    } else foot.appendChild(again);
     return;
   }
 
@@ -334,9 +424,11 @@ function escapeHtml(s){
 }
 
 // A compliment on a timer as well as on movement, so a long proof is not silent.
-setInterval(() => { if (R){ nextCompliment(); draw(); } }, 90000);
+setInterval(() => { nextCompliment(); draw(); }, 90000);
 
-draw();
+// A link carrying one recipe still works; a share id fetches the whole list.
+if (R) loadRecipe(R); else draw();
+loadList();
 </script>
 </body>
 </html>
