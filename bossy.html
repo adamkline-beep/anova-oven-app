@@ -111,10 +111,31 @@ function unb64url(s){
   return new TextDecoder().decode(bytes);
 }
 
-let R = null;
-try {
+/* Where the recipe comes from, in order of preference:
+   1. ?r= in the query string. This is what links use now, because iOS drops
+      the fragment when a page is added to the home screen - the installed icon
+      would open to nothing.
+   2. #r= in the fragment, so links sent before that was fixed still work.
+   3. Whatever was opened last, kept on this device. That makes the home-screen
+      icon reliable, and the page usable with no signal at all. */
+let R = null, restored = false;
+
+function readPayload(){
+  const q = new URLSearchParams(location.search).get('r');
+  if (q) return q;
   const h = location.hash.replace(/^#r=/, '');
-  if (h) R = JSON.parse(unb64url(h));
+  return h || '';
+}
+
+try {
+  const raw = readPayload();
+  if (raw){
+    R = JSON.parse(unb64url(raw));
+    try { localStorage.setItem('bossy.last', JSON.stringify(R)); } catch (e){}
+  } else {
+    const kept = localStorage.getItem('bossy.last');
+    if (kept){ R = JSON.parse(kept); restored = true; }
+  }
 } catch (e){ R = null; }
 
 /* ---------- compliments ---------- */
@@ -205,7 +226,9 @@ function draw(){
 
   if (!R){
     main.innerHTML = '<div class="empty"><h2>Nothing to boss yet</h2>' +
-      'Ask for a recipe link from the oven app — open a recipe, tap <b>Bossy mode</b>, and send the link.</div>';
+      'Open the recipe link you were sent — tap it in the message rather than typing it. ' +
+      'Once it has loaded here, this page remembers it, and the home-screen icon will ' +
+      'open straight to it from then on.</div>';
     $('#bar').style.width = '0';
     return;
   }
@@ -215,6 +238,11 @@ function draw(){
   $('#bar').style.width = Math.round(page / (STEPS.length + 1) * 100) + '%';
 
   if (page === 0){
+    if (restored){
+      const n = el('div','lead');
+      n.textContent = 'Showing the last recipe you opened. Tap a newer link to change it.';
+      main.appendChild(n);
+    }
     const lead = el('div','lead');
     lead.textContent = R.servings
       ? 'Makes ' + R.servings + '. Get all of this out first, then tap Start.'

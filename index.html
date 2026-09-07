@@ -1196,8 +1196,10 @@ function bossyLink(r){
     oven: (r.usesOven !== false && r.stages) ? r.stages.map((st, i) => (i+1) + '. ' + stageLine(st)) : [],
     compliments: store.compliments
   };
-  const base = location.href.split('#')[0].replace(/[^/]*$/, '');
-  return base + 'bossy.html#r=' + b64url(JSON.stringify(payload));
+  // Query string, not fragment: iOS discards the fragment when a page is added
+  // to the home screen, and the installed icon would open to an empty screen.
+  const base = location.href.split('#')[0].split('?')[0].replace(/[^/]*$/, '');
+  return base + 'bossy.html?r=' + b64url(JSON.stringify(payload));
 }
 
 function shareBossy(r){
