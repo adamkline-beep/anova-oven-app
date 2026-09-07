@@ -2,9 +2,10 @@
 
 `recipes/library.json` is served with the app. Anything in it appears on the
 phone under **Recipes -> Recipe library**, where one tap copies it into the
-owner's own recipes. Add an entry, commit, push; Netlify redeploys and the phone
-picks it up on the next open. Nothing is overwritten on the phone - the library
-offers, it never syncs.
+owner's own recipes. Add an entry, commit, push to `main`; GitHub Pages
+redeploys and the phone picks it up on the next open. A recipe sitting on a
+branch is not published - Pages only serves `main`. Nothing is overwritten
+on the phone - the library offers, it never syncs.
 
 ## Shape
 

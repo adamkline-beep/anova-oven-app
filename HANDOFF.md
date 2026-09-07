@@ -12,11 +12,22 @@ Written 2026-09-06. Owner runs an **Anova Precision Oven 1.0, 120V, firmware 2.1
 
 A single-file web app (`index.html`) that installs to an Android home screen as a
 PWA and controls the oven through Anova's official developer API. Deployed on
-Netlify. No backend, no Home Assistant. Token and recipes live in the phone's
+GitHub Pages, served from the `main` branch at the repo root. No backend, no
+Home Assistant. Token and recipes live in the phone's
 `localStorage`.
 
 Supporting files: `manifest.webmanifest`, `sw.js` (network-first shell cache),
 `icon-192.png`, `icon-512.png`, `icon-maskable.png`, `README.md`.
+
+There used to be a `netlify.toml` that sent `Cache-Control: max-age=0,
+must-revalidate` for `sw.js` and `index.html`, so the phone could never keep
+running an old app shell after a deploy. GitHub Pages does not support custom
+headers, so that file was inert and has been removed. Nothing replaces it: Pages
+serves everything with `max-age=600`, browsers cap a service worker script at 24
+hours and bypass the HTTP cache when checking it for updates, and the fetch
+handler is network-first, so `recipes/library.json` is re-fetched whenever the
+phone is online. Worst case a deploy takes ten minutes to reach a phone that has
+the app open. If that ever becomes a problem, bump `CACHE` in `sw.js`.
 
 **Status: working on real hardware.** Connects, reads live state, starts and stops
 cooks. Confirmed 2026-09-05/06.

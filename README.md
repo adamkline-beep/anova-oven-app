@@ -50,6 +50,8 @@ free ways, pick either:
 **Netlify Drop** — go to `app.netlify.com/drop` and drag the whole folder onto the
 page. You get a URL immediately. No account needed to start.
 
+This repo uses the first one: GitHub Pages, branch `main`, folder `/root`.
+
 ## 3. Install it on your phone
 
 Open that URL in Chrome on Android. Chrome will either show an "Install app"

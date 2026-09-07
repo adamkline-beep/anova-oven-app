@@ -1,5 +1,5 @@
 {
-  "_readme": "Recipes offered to the app under Recipes -> Recipe library. See RECIPES.md for the schema. Adding an entry here and pushing is all it takes: Netlify redeploys and the phone sees it on the next open.",
+  "_readme": "Recipes offered to the app under Recipes -> Recipe library. See RECIPES.md for the schema. Adding an entry here and pushing to main is all it takes: GitHub Pages redeploys and the phone sees it on the next open. An entry on a branch is not published until that branch reaches main.",
   "recipes": [
     {
       "name": "Proof dough",
