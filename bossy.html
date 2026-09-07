@@ -230,13 +230,33 @@ const UNITS = {
   pinch:'pinch', pinches:'pinch', packet:'packet', packets:'packet'
 };
 
+const UFRAC = { '½':0.5, '⅓':1/3, '⅔':2/3, '¼':0.25, '¾':0.75,
+  '⅕':0.2, '⅖':0.4, '⅗':0.6, '⅘':0.8, '⅙':1/6, '⅚':5/6,
+  '⅛':0.125, '⅜':0.375, '⅝':0.625, '⅞':0.875 };
+const FRACCH = '[' + Object.keys(UFRAC).join('') + ']';
+
+function fracQty(t){
+  t = String(t || '').trim();
+  const uni = t.match(new RegExp('^(\\d+)?\\s*(' + FRACCH + ')$'));
+  if (uni) return (uni[1] ? +uni[1] : 0) + UFRAC[uni[2]];
+  const mixed = t.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if (mixed) return +mixed[1] + (+mixed[2] / +mixed[3]);
+  const frac = t.match(/^(\d+)\/(\d+)$/);
+  if (frac) return +frac[1] / +frac[2];
+  const n = parseFloat(t);
+  return Number.isFinite(n) ? n : null;
+}
+
 function parseIng(text){
   return String(text || '').split('\n').map(raw => {
     const t = raw.trim();
     if (!t) return { blank: true };
-    if (!/^[\d.]/.test(t) && (t === t.toUpperCase() && /[A-Z]/.test(t) || /:$/.test(t)))
+    if (!new RegExp('^[\\d.]|^' + FRACCH).test(t) &&
+        (t === t.toUpperCase() && /[A-Z]/.test(t) || /:$/.test(t)))
       return { heading: true, text: t.replace(/:$/, '') };
-    const m = t.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d*\.?\d+)\s*([A-Za-z]+)?\.?\s*(.*)$/);
+    const m = t.match(new RegExp(
+      '^(\\d+\\s*' + FRACCH + '|' + FRACCH + '|\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d*\\.?\\d+)' +
+      '\\s*([A-Za-z]+)?\\.?\\s*(.*)$'));
     if (m){
       const word = (m[2] || '').toLowerCase();
       // Only a real unit belongs with the number; "1 large egg" is one egg.
@@ -245,7 +265,7 @@ function parseIng(text){
       // q and n are what this page draws; qty, unit and text are what
       // mentionedIn() reads. It is shared with the app, so both must be here.
       return { q: (m[1] + (unit ? ' ' + unit : '')).trim(), n: rest,
-               qty: parseFloat(m[1]), unit: unit, text: rest };
+               qty: fracQty(m[1]), unit: unit, text: rest };
     }
     return { q: '', n: t, text: t };
   });
@@ -278,19 +298,48 @@ function splitSteps(text){
 // drops leading adjectives - "unsalted European butter", then "European
 // butter", then "butter" - so a step that says "add the butter" still finds
 // it. Word boundaries, so "egg" does not match "eggplant".
+// Words that describe an ingredient rather than name it. On their own they
+// match ordinary prose - "a large pot", "pork can be cooked ahead" - so a
+// single-word candidate has to be more than one of these.
+const NOTANAME = {
+  large:1, small:1, medium:1, extra:1, whole:1, half:1, fresh:1, freshly:1,
+  ground:1, finely:1, coarsely:1, coarse:1, chopped:1, minced:1, sliced:1,
+  softened:1, melted:1, grated:1, peeled:1, seeded:1, drained:1, rinsed:1,
+  can:1, jar:1, tin:1, package:1, packet:1, box:1, bag:1, bunch:1,
+  piece:1, pieces:1, plus:1, more:1, about:1, from:1, for:1, into:1, cut:1,
+  not:1, quick:1, cooking:1, room:1, temperature:1, warm:1, cold:1, hot:1,
+  good:1, quality:1, best:1, ripe:1, dry:1, dried:1, low:1, high:1, plain:1,
+  unsalted:1, salted:1, sweet:1, light:1, dark:1, thick:1, thin:1
+};
+
 function mentionedIn(step, lines){
   const text = ' ' + String(step || '').toLowerCase() + ' ';
   const hits = [];
   lines.forEach((l, i) => {
     if (!l || l.blank || l.heading || l.qty == null) return;
-    const name = String(l.text || '').split(',')[0].trim().toLowerCase();
+    // Drop the parenthetical and anything after a comma: "grated Parmesan
+    // (from about 2 ounces), plus more" is really "grated Parmesan".
+    const name = String(l.text || '').split(',')[0]
+      .replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
     if (!name) return;
-    const words = name.split(/\s+/).filter(Boolean);
-    for (let w = 0; w < words.length; w++){
-      const cand = words.slice(w).join(' ');
-      if (cand.length < 3) continue;
-      const rx = new RegExp('(^|[^a-z])' + cand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^a-z]|$)', 'i');
-      if (rx.test(text)){ hits.push({ line: l, idx: i, key: cand }); break; }
+    const words = name.split(' ').filter(Boolean);
+
+    // Every run of consecutive words, longest first. A step may name an
+    // ingredient by its head word ("garlic" for "garlic cloves"), its tail
+    // ("polenta" for "coarse polenta"), or the lot.
+    const cands = [];
+    for (let a = 0; a < words.length; a++)
+      for (let b = words.length; b > a; b--){
+        const c = words.slice(a, b).join(' ');
+        if (c.length < 3) continue;
+        if (b - a === 1 && NOTANAME[c]) continue;
+        cands.push(c);
+      }
+    cands.sort((x, y) => y.length - x.length);
+
+    for (let c = 0; c < cands.length; c++){
+      const rx = new RegExp('(^|[^a-z])' + cands[c].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^a-z]|$)', 'i');
+      if (rx.test(text)){ hits.push({ line: l, idx: i, key: cands[c] }); break; }
     }
   });
   return hits;
