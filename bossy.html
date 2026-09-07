@@ -135,14 +135,30 @@ let complimentIdx = Math.floor(Math.random() * LINES.length);
 function nextCompliment(){ complimentIdx = (complimentIdx + 1 + Math.floor(Math.random() * (LINES.length - 1))) % LINES.length; }
 
 /* ---------- ingredients ---------- */
+// Same whitelist the main app uses, so the two read a line the same way.
+const UNITS = {
+  g:'g', gram:'g', grams:'g', kg:'kg', mg:'mg', ml:'ml', l:'l', litre:'l', liter:'l',
+  oz:'oz', ounce:'oz', ounces:'oz', lb:'lb', lbs:'lb', pound:'lb', pounds:'lb',
+  tsp:'tsp', teaspoon:'tsp', teaspoons:'tsp', tbsp:'tbsp', tablespoon:'tbsp', tablespoons:'tbsp',
+  cup:'cup', cups:'cup', quart:'quart', qt:'quart', pint:'pint',
+  stick:'stick', sticks:'stick', clove:'clove', cloves:'clove',
+  pinch:'pinch', pinches:'pinch', packet:'packet', packets:'packet'
+};
+
 function parseIng(text){
   return String(text || '').split('\n').map(raw => {
     const t = raw.trim();
     if (!t) return { blank: true };
     if (!/^[\d.]/.test(t) && (t === t.toUpperCase() && /[A-Z]/.test(t) || /:$/.test(t)))
       return { heading: true, text: t.replace(/:$/, '') };
-    const m = t.match(/^([\d.\/ ]+?)\s*([A-Za-z]{1,5})?\s+(.*)$/);
-    if (m && /^[\d]/.test(m[1])) return { q: (m[1].trim() + ' ' + (m[2] || '')).trim(), n: m[3] };
+    const m = t.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d*\.?\d+)\s*([A-Za-z]+)?\.?\s*(.*)$/);
+    if (m){
+      const word = (m[2] || '').toLowerCase();
+      // Only a real unit belongs with the number; "1 large egg" is one egg.
+      const unit = UNITS[word] || '';
+      const rest = unit ? m[3] : ((m[2] ? m[2] + ' ' : '') + m[3]).trim();
+      return { q: (m[1] + (unit ? ' ' + unit : '')).trim(), n: rest };
+    }
     return { q: '', n: t };
   });
 }
