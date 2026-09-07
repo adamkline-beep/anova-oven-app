@@ -160,14 +160,15 @@
       "notes": "Converted from a broiler recipe: the original broils 6 inches from the element for 7-9 minutes with the oven door propped ajar. This oven has no broil, so it is split into a gentle steam bake to cook the fish through and a short top-element blast for colour. Splitting it also protects the glaze, which is a quarter cup of brown sugar and would scorch under 8 straight minutes of top heat.\n\nTimes are my estimates, not from the source — the source only gives the broiler timing. First cook: check at the end of stage 1 and treat stage 2 as the variable. Sea bass is done at about 130F internal; it will carry over a few degrees.\n\nRack 3 is a guess. If the glaze is not colouring in stage 2, move the tray a rack closer to the top element next time.\n\nStage 1 has no hold, so the oven preheats with the fish already inside. That gentle ramp suits fish, but it means the 10 minutes is time-at-temperature plus the ramp — expect the whole thing to run longer than 12.5 minutes on the clock."
     },
     {
-      "name": "Classic banana bread",
-      "servings": "1 loaf",
-      "source": "Serious Eats, Melinda Edwards",
+      "name": "Ultimate banana nut bread",
+      "servings": "1 large loaf, 10.5x5.5in",
+      "source": "Stella Parks, Serious Eats",
       "tags": [
         "bread",
         "quick bread",
         "banana",
-        "baking"
+        "baking",
+        "stella parks"
       ],
       "usesOven": true,
       "stages": [
@@ -183,7 +184,7 @@
           "fan": 25,
           "vent": false,
           "rack": 2,
-          "timer": 2400,
+          "timer": 2700,
           "probe": 0,
           "hold": false
         },
@@ -199,14 +200,14 @@
           "fan": 25,
           "vent": true,
           "rack": 2,
-          "timer": 1200,
+          "timer": 1500,
           "probe": 0,
           "hold": false
         }
       ],
-      "ingredients": "3 ripe bananas\n1 cup sugar\n1 egg\n1/4 cup butter, melted\n1 1/2 cups flour\n1 teaspoon baking soda\n1 teaspoon salt\n1/2 cup chopped nuts, optional",
-      "steps": "1. Grease a loaf pan. Mash the bananas in a large bowl until nearly smooth — a few lumps are fine.\n\n2. Beat in the sugar, then the egg, then the melted butter.\n\n3. Fold in the flour, baking soda and salt just until no dry flour remains. Stop there; a quick bread turns tough if you keep mixing. Fold in the nuts if using.\n\n4. Scrape into the pan and level the top. Set it on rack 2.\n\n5. Send this recipe. Stage 1 bakes 40 minutes at 350F on the top and bottom elements to set the loaf and colour the crown. Stage 2 drops the top element for the last 20 minutes so the middle finishes without the top going any darker — the foil tent, done with elements instead.\n\n6. Test at the end with a skewer in the centre: it should come out with a few moist crumbs, not wet batter. Cool 10 minutes in the pan, then turn out onto a rack.",
-      "notes": "Two things the source did not give me and I did not invent: the pan size and the exact bake time. It says a loaf pan at 350F for about an hour. I split that hour 40/20; if you use an 8x4 rather than a 9x5 the loaf is deeper and will want longer, so treat the skewer as the real test and add time on stage 2.\n\nThe stage split is the Salt rolls lesson applied: no rear element at all. Convection browns a crown hard over a long bake, and an hour is a long bake. Top and bottom for the first 40 minutes is an ordinary home oven, which is what the recipe assumes; dropping to bottom only for the last 20 stops the crown darkening while the centre finishes.\n\nVent opens on stage 2 to let the surface dry off — this is a wet batter and the top can go gummy otherwise. If the crust comes out tougher than you like, close it.\n\nBottom-element-only caps at 356F, so stage 2 has no headroom above 350. Do not raise this recipe's temperature without also turning the top element back on.\n\nIngredients are the source's volumetric measures. 1 teaspoon salt reads high for one loaf but that is what the recipe says — worth checking against your taste on the first bake and noting here."
+      "ingredients": "565g bananas, 4 medium, ripe but not fully black (about 340g peeled)\n115g plain Greek yogurt, preferably nonfat\n2 large eggs, straight from the fridge\n15g vanilla extract (1 tablespoon)\n280g all-purpose flour\n150g sugar, preferably toasted\n85g oat flour, such as Bob's Red Mill\n1 teaspoon baking powder\n1 teaspoon baking soda\n3g Diamond Crystal kosher salt (3/4 teaspoon; for table salt use half the volume)\n3/4 teaspoon ground cinnamon\n1/2 teaspoon ground cloves\n1/4 teaspoon ground or grated nutmeg\n150g coconut oil, virgin or refined, creamy but firm, about 70F\n170g toasted pecan or other nut pieces\nBanana whipped cream, optional, to serve",
+      "steps": "1. Line a 10.5 x 5.5 inch loaf pan with a 9 x 13 inch sheet of parchment. Two 9 x 5 inch pans also work, lined with 7 x 13 inch sheets.\n\n2. Peel the bananas and mash them with the Greek yogurt, eggs and vanilla in a medium bowl. If the bananas are underripe, cover the bowl and let the mixture stand 30 minutes.\n\n3. Combine the flour, sugar, oat flour, baking powder, baking soda, salt, cinnamon, cloves, nutmeg and coconut oil in the bowl of a stand mixer with the paddle. Mix on low until the coconut oil disappears into a mealy powder.\n\n4. Add the banana mash and mix only until the floury bits disappear. Fold in the nuts with a spatula, scrape into the pan and spread level. Set it on rack 2, low-middle.\n\n5. Send this recipe. Stage 1 bakes 45 minutes at 350F on the top and bottom elements. Stage 2 drops the top element for the last 25 minutes so the centre finishes without the crown darkening further.\n\n6. It is done when it is well risen and golden brown, and about 206F in the middle. Seventy minutes total is the recipe's own figure for a large loaf; two small loaves want about 45.\n\n7. Wrapped tightly in foil it keeps 3 days at room temperature or a week in the fridge.",
+      "notes": "Stella Parks. The oat flour and the Greek yogurt are what keep the crumb moist, and the cinnamon-cloves-nutmeg blend is there to amplify the banana rather than to taste of spice. Do not drop them for a plainer loaf without expecting a different bread.\n\n206F internal is the real doneness test and the probe is broken, so the 45/25 split is a stand-in for it. Check with an instant-read at the end of stage 2 before pulling it.\n\nNo rear element anywhere in this. Seventy minutes under convection would brown the crown long before the middle reached 206F -- the Salt rolls problem, over a much longer bake. Top and bottom for the first 45 is an ordinary home oven, which is what the recipe assumes; bottom only for the last 25 is the foil tent done with elements.\n\nBottom-element-only caps at 356F, so stage 2 has almost no headroom. Do not raise the temperature without turning the top element back on.\n\nVent opens on stage 2 to dry the surface. If the crust comes out tougher than you like, close it.\n\nRack 2 is my read of the recipe's 'lower-middle'. I still do not know which end of the 1-5 scale is the top, so check the first bake and correct this line.\n\nMuffin variant from the source: divide the batter among 12 greased nonstick cups, about 120g each, and bake until domed and just browning at the edges, about 25 minutes. That is one stage, not two -- it is too short to need the split."
     }
   ]
 }
