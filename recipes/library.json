@@ -158,6 +158,55 @@
       "ingredients": "MARINADE\n1/3 cup miso paste\n1/3 cup sake\n1/3 cup mirin\n3 tablespoons soy sauce\n1/4 cup packed brown sugar\n\nFISH\n4 (4 ounce) fillets fresh sea bass, about 1 inch thick\n2 tablespoons chopped green onion",
       "steps": "1. Whisk the sake, mirin, miso paste, brown sugar and soy sauce together in a bowl until the miso and the sugar have dissolved.\n\n2. Put the fillets in a large resealable bag, pour the marinade over them, seal, and chill in the refrigerator 3 to 6 hours.\n\n3. Lift the fillets out and discard the marinade. Pat them dry — a wet surface steams instead of glazing. Set them on a lined tray on rack 3.\n\n4. Send this recipe. Stage 1 cooks the fish through at 300F with 30% steam, about 10 minutes. Stage 2 jumps to 482F on the top element alone for about 2-3 minutes to caramelise the glaze. Watch that second stage — brown sugar goes from lacquered to burnt quickly.\n\n5. Scatter the green onion over the fillets and serve.",
       "notes": "Converted from a broiler recipe: the original broils 6 inches from the element for 7-9 minutes with the oven door propped ajar. This oven has no broil, so it is split into a gentle steam bake to cook the fish through and a short top-element blast for colour. Splitting it also protects the glaze, which is a quarter cup of brown sugar and would scorch under 8 straight minutes of top heat.\n\nTimes are my estimates, not from the source — the source only gives the broiler timing. First cook: check at the end of stage 1 and treat stage 2 as the variable. Sea bass is done at about 130F internal; it will carry over a few degrees.\n\nRack 3 is a guess. If the glaze is not colouring in stage 2, move the tray a rack closer to the top element next time.\n\nStage 1 has no hold, so the oven preheats with the fish already inside. That gentle ramp suits fish, but it means the 10 minutes is time-at-temperature plus the ramp — expect the whole thing to run longer than 12.5 minutes on the clock."
+    },
+    {
+      "name": "Classic banana bread",
+      "servings": "1 loaf",
+      "source": "Serious Eats, Melinda Edwards",
+      "tags": [
+        "bread",
+        "quick bread",
+        "banana",
+        "baking"
+      ],
+      "usesOven": true,
+      "stages": [
+        {
+          "temp": 350,
+          "unit": "F",
+          "mode": "dry",
+          "steam": "none",
+          "steamVal": 0,
+          "top": true,
+          "bottom": true,
+          "rear": false,
+          "fan": 25,
+          "vent": false,
+          "rack": 2,
+          "timer": 2400,
+          "probe": 0,
+          "hold": false
+        },
+        {
+          "temp": 350,
+          "unit": "F",
+          "mode": "dry",
+          "steam": "none",
+          "steamVal": 0,
+          "top": false,
+          "bottom": true,
+          "rear": false,
+          "fan": 25,
+          "vent": true,
+          "rack": 2,
+          "timer": 1200,
+          "probe": 0,
+          "hold": false
+        }
+      ],
+      "ingredients": "3 ripe bananas\n1 cup sugar\n1 egg\n1/4 cup butter, melted\n1 1/2 cups flour\n1 teaspoon baking soda\n1 teaspoon salt\n1/2 cup chopped nuts, optional",
+      "steps": "1. Grease a loaf pan. Mash the bananas in a large bowl until nearly smooth — a few lumps are fine.\n\n2. Beat in the sugar, then the egg, then the melted butter.\n\n3. Fold in the flour, baking soda and salt just until no dry flour remains. Stop there; a quick bread turns tough if you keep mixing. Fold in the nuts if using.\n\n4. Scrape into the pan and level the top. Set it on rack 2.\n\n5. Send this recipe. Stage 1 bakes 40 minutes at 350F on the top and bottom elements to set the loaf and colour the crown. Stage 2 drops the top element for the last 20 minutes so the middle finishes without the top going any darker — the foil tent, done with elements instead.\n\n6. Test at the end with a skewer in the centre: it should come out with a few moist crumbs, not wet batter. Cool 10 minutes in the pan, then turn out onto a rack.",
+      "notes": "Two things the source did not give me and I did not invent: the pan size and the exact bake time. It says a loaf pan at 350F for about an hour. I split that hour 40/20; if you use an 8x4 rather than a 9x5 the loaf is deeper and will want longer, so treat the skewer as the real test and add time on stage 2.\n\nThe stage split is the Salt rolls lesson applied: no rear element at all. Convection browns a crown hard over a long bake, and an hour is a long bake. Top and bottom for the first 40 minutes is an ordinary home oven, which is what the recipe assumes; dropping to bottom only for the last 20 stops the crown darkening while the centre finishes.\n\nVent opens on stage 2 to let the surface dry off — this is a wet batter and the top can go gummy otherwise. If the crust comes out tougher than you like, close it.\n\nBottom-element-only caps at 356F, so stage 2 has no headroom above 350. Do not raise this recipe's temperature without also turning the top element back on.\n\nIngredients are the source's volumetric measures. 1 teaspoon salt reads high for one loaf but that is what the recipe says — worth checking against your taste on the first bake and noting here."
     }
   ]
 }
