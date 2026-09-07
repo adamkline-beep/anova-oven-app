@@ -175,6 +175,39 @@
       "ingredients": "565g bananas, 4 medium, ripe but not fully black (about 340g peeled)\n115g plain Greek yogurt, preferably nonfat\n2 large eggs, straight from the fridge\n15g vanilla extract (1 tablespoon)\n280g all-purpose flour\n150g sugar, preferably toasted\n85g oat flour, such as Bob's Red Mill\n1 teaspoon baking powder\n1 teaspoon baking soda\n3g Diamond Crystal kosher salt (3/4 teaspoon; for table salt use half the volume)\n3/4 teaspoon ground cinnamon\n1/2 teaspoon ground cloves\n1/4 teaspoon ground or grated nutmeg\n150g coconut oil, virgin or refined, creamy but firm, about 70F\n170g toasted pecan or other nut pieces\nBanana whipped cream, optional, to serve",
       "steps": "1. Line a 10.5 x 5.5 inch loaf pan with a 9 x 13 inch sheet of parchment. Two 9 x 5 inch pans also work, lined with 7 x 13 inch sheets.\n\n2. Peel the bananas and mash them with the Greek yogurt, eggs and vanilla in a medium bowl. If the bananas are underripe, cover the bowl and let the mixture stand 30 minutes.\n\n3. Combine the flour, sugar, oat flour, baking powder, baking soda, salt, cinnamon, cloves, nutmeg and coconut oil in the bowl of a stand mixer with the paddle. Mix on low until the coconut oil disappears into a mealy powder.\n\n4. Add the banana mash and mix only until the floury bits disappear. Fold in the nuts with a spatula, scrape into the pan and spread level. Set it on rack 2, low-middle.\n\n5. Send this recipe. Stage 1 bakes 45 minutes at 350F on the top and bottom elements. Stage 2 drops the top element for the last 25 minutes so the centre finishes without the crown darkening further.\n\n6. It is done when it is well risen and golden brown, and about 206F in the middle. Seventy minutes total is the recipe's own figure for a large loaf; two small loaves want about 45.\n\n7. Wrapped tightly in foil it keeps 3 days at room temperature or a week in the fridge.",
       "notes": "Stella Parks. The oat flour and the Greek yogurt are what keep the crumb moist, and the cinnamon-cloves-nutmeg blend is there to amplify the banana rather than to taste of spice. Do not drop them for a plainer loaf without expecting a different bread.\n\n206F internal is the real doneness test and the probe is broken, so the 45/25 split is a stand-in for it. Check with an instant-read at the end of stage 2 before pulling it.\n\nNo rear element anywhere in this. Seventy minutes under convection would brown the crown long before the middle reached 206F -- the Salt rolls problem, over a much longer bake. Top and bottom for the first 45 is an ordinary home oven, which is what the recipe assumes; bottom only for the last 25 is the foil tent done with elements.\n\nBottom-element-only caps at 356F, so stage 2 has almost no headroom. Do not raise the temperature without turning the top element back on.\n\nVent opens on stage 2 to dry the surface. If the crust comes out tougher than you like, close it.\n\nRack 2 is my read of the recipe's 'lower-middle'. I still do not know which end of the 1-5 scale is the top, so check the first bake and correct this line.\n\nMuffin variant from the source: divide the batter among 12 greased nonstick cups, about 120g each, and bake until domed and just browning at the edges, about 25 minutes. That is one stage, not two -- it is too short to need the split."
+    },
+    {
+      "name": "Jagerschnitzel, American style",
+      "servings": "5 cutlets",
+      "tags": [
+        "pork",
+        "schnitzel",
+        "german",
+        "fried",
+        "stovetop"
+      ],
+      "usesOven": true,
+      "stages": [
+        {
+          "temp": 200,
+          "unit": "F",
+          "mode": "dry",
+          "steam": "none",
+          "steamVal": 0,
+          "top": false,
+          "bottom": false,
+          "rear": true,
+          "fan": 100,
+          "vent": true,
+          "rack": 2,
+          "timer": 0,
+          "probe": 0,
+          "hold": false
+        }
+      ],
+      "ingredients": "PORK\n5 boneless pork loin cutlets, about 5 oz each\nKosher salt and freshly ground black pepper\n\nBREADING\n1 cup all-purpose flour\n1/2 teaspoon kosher salt, for the flour\n3 large eggs\n2 tablespoons whole milk\n2 cups fine dry breadcrumbs\n\nFRYING\n2 cups neutral oil or clarified butter, enough for 1/3 inch in the pan\n2 tablespoons unsalted butter\n1 lemon, in wedges",
+      "steps": "1. Start the oven first. Send this recipe: it heats to 200F and holds there. The app will say it is waiting for a press on the oven panel — you never need to press it. The holding is the whole point, and it is where the fried cutlets wait while you work through the batches.\n\n2. Pound the cutlets between two sheets of plastic to a scant 1/4 inch. This is the dish. Thin and even matters more than anything else here — a cutlet that varies in thickness cooks unevenly no matter what you do afterwards. Season both sides with salt and pepper.\n\n3. Set up three dishes: the flour with the 1/2 teaspoon salt, the eggs beaten with the milk, and the breadcrumbs. Flour each cutlet and shake off the excess, then egg, letting it drip, then crumbs.\n\n4. Lay the crumbs on and press only just enough to make them stick. Do not pack them down. A loose coat is what lets the crust puff and blister away from the meat; a pressed one goes dense and flat.\n\n5. Heat 1/3 inch of oil in a wide skillet to 340-350F with a tablespoon of the butter in it. Use two pans if you want this over faster.\n\n6. Fry two at a time, 2 to 3 minutes a side, to deep golden. As each side cooks, tilt the pan and spoon the hot fat over the top. That basting is what makes the crust lift — it is the difference between schnitzel and a breaded pork chop.\n\n7. Lift each one onto a rack, salt it immediately, and slide the rack into the 200F oven. Onto a rack, not paper towels — paper traps steam and the underside goes soft in a couple of minutes.\n\n8. Serve with the mushroom gravy and lemon wedges, spatzle alongside. Put the gravy under the schnitzel or in a jug, not poured over the top: that crust took real work and sauce softens it within a minute.",
+      "notes": "Breaded, with gravy over it, is the American version and it is what goes with the Jager gravy. Worth knowing that in Germany Jagerschnitzel is usually an unbreaded cutlet — the breaded-plus-sauce combination is largely a restaurant and US habit. Not wrong, just not the original, and it is why the serving note about keeping the sauce off the crust matters more here than it would in Germany.\n\nTHE OVEN STAGE is only a warm hold: 200F, rear element, vent open. The open vent is the point — it lets the steam coming off five fried cutlets escape instead of collecting and softening the crust, and the fan keeps air moving over them. It holds indefinitely, so send it before you start pounding. If they will sit longer than about 30 minutes, drop it to 175F; thin pork dries out.\n\nCRUMBS. Fine dry breadcrumbs, not panko. Panko gives a spikier, craggier crust that is good in its own right but is not this. Whichever you use, do not press them on.\n\nMEAT. Pork loin is the standard here and is what Jagerschnitzel is made from. Veal makes it Wiener Schnitzel and wants a gentler hand and a shorter fry; chicken breast works and is the most forgiving of the three.\n\nSPATZLE. Can be made ahead and held, then crisped in brown butter in a wide pan while the schnitzel is in the oven. Do that last, in the fat you have just been frying in if you like."
     }
   ]
 }
