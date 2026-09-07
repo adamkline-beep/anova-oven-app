@@ -119,6 +119,35 @@ main{padding:var(--pad);max-width:640px;margin:0 auto}
   font-variant-numeric:tabular-nums;line-height:1;margin-top:6px
 }
 .clock small{font-size:15px;color:var(--dim);font-family:'Barlow',sans-serif;font-weight:400;margin-left:8px}
+.search{width:100%;padding:11px 13px;margin-bottom:13px;border-radius:10px;
+  background:var(--surface);border:1px solid var(--line);color:var(--text);font-size:15px}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.tags span{font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);
+  background:var(--raised);border-radius:5px;padding:3px 7px}
+.vname{font-size:24px;line-height:1.15;margin-bottom:3px}
+.vserves{color:var(--dim);font-size:14px}
+.vscale{display:flex;gap:7px;margin-top:14px}
+.vscale button{flex:1;padding:9px 0;border-radius:9px;background:var(--raised);
+  border:1px solid var(--line);color:var(--dim);font-size:14px}
+.vscale button[aria-pressed=true]{border-color:var(--ember);color:var(--ember);background:#2E2118}
+.ilist{margin-top:2px}
+.igap{height:9px}
+.ihead{font-size:12.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);
+  margin:12px 0 5px;font-weight:600}
+.irow{display:flex;gap:10px;align-items:baseline;padding:7px 2px;border-bottom:1px solid var(--line);
+  cursor:pointer;font-size:15px}
+.irow.done{opacity:.4;text-decoration:line-through}
+.iqty{min-width:74px;font-variant-numeric:tabular-nums;color:var(--ember);font-weight:600}
+.iname{flex:1}
+.ipct{color:var(--dim);font-size:12.5px;font-variant-numeric:tabular-nums}
+.srow{padding:11px 12px;margin-top:8px;border-radius:10px;background:var(--surface);
+  border:1px solid var(--line);line-height:1.5;font-size:14.5px;white-space:pre-wrap;cursor:pointer}
+.srow.done{opacity:.4;text-decoration:line-through}
+.ovrow{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;padding:9px 2px;
+  border-bottom:1px solid var(--line);font-size:14px;color:var(--dim)}
+.ovn{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;
+  border-radius:6px;background:var(--raised);color:var(--ember);font-size:12px;font-weight:600}
+.ovhold{width:100%;color:var(--ember);font-size:13px;margin-top:3px}
 .rsec{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ember);
   margin:18px 0 7px;font-weight:600}
 .rbody{white-space:pre-wrap;line-height:1.5;font-size:14.5px;color:var(--text)}
@@ -276,6 +305,7 @@ pre{
 
 <!-- ================= RECIPES ================= -->
 <section class="view" id="v-recipes">
+  <input id="rSearch" class="search" placeholder="Search recipes" autocomplete="off">
   <div id="recipeList"></div>
   <button class="btn go" id="btnNew" style="margin-top:14px">New recipe</button>
   <div class="row" style="margin-top:10px">
@@ -284,6 +314,12 @@ pre{
   </div>
   <button class="btn slim" id="btnLibrary" style="margin-top:10px">Recipe library</button>
   <div class="hint">Recipes added to the app&rsquo;s repository show up here.</div>
+</section>
+
+<!-- ================= RECIPE VIEW ================= -->
+<section class="view" id="v-view">
+  <div id="viewBody"></div>
+  <button class="btn slim" id="btnViewBack" style="margin-top:20px">Back to recipes</button>
 </section>
 
 <!-- ================= EDITOR ================= -->
@@ -303,6 +339,11 @@ pre{
   <div class="field">
     <label for="rSteps">Method</label>
     <textarea id="rSteps" class="ta" placeholder="1. Cook the tangzhong&#10;2. Knead until it passes the windowpane test"></textarea>
+  </div>
+  <div class="field">
+    <label for="rTags">Tags</label>
+    <input id="rTags" placeholder="bread, weekend, steakhouse" autocomplete="off">
+    <div class="hint">Comma separated. Used by search.</div>
   </div>
   <div class="field">
     <label for="rNotes">Notes</label>
@@ -821,7 +862,7 @@ function blankStage(){
 }
 function blankRecipe(){
   return { id: uuid(), name:'', servings:'', ingredients:'', steps:'', notes:'',
-           usesOven: true, stages:[blankStage()] };
+           tags: [], usesOven: true, stages:[blankStage()] };
 }
 
 // Anything arriving from outside the app - a paste, a file, the repo library -
@@ -842,6 +883,8 @@ function normalizeRecipe(r){
     notes: txt(r.notes, 8000),
     // Recipes predating this field are all oven programmes.
     usesOven: r.usesOven === undefined ? true : !!r.usesOven,
+    tags: (Array.isArray(r.tags) ? r.tags : String(r.tags || '').split(','))
+            .map(t => String(t).trim().toLowerCase()).filter(Boolean).slice(0, 12),
     updatedAt: Number.isFinite(+r.updatedAt) ? +r.updatedAt : Date.now(),
     stages: src.slice(0, 12).map(s => {
       s = s || {};
@@ -914,17 +957,36 @@ function summarize(r){
 const toF = s => s.unit === 'F' ? s.temp : c2f(s.temp);
 const toC = s => s.unit === 'F' ? f2c(s.temp) : s.temp;
 
+// Search covers everything a cook might remember a recipe by.
+function matches(r, q){
+  q = String(q || '').trim().toLowerCase();
+  if (!q) return true;
+  const hay = [r.name, r.servings, (r.tags||[]).join(' '), r.ingredients, r.steps, r.notes]
+    .join(' ').toLowerCase();
+  return q.split(/\s+/).filter(Boolean).every(w => hay.indexOf(w) > -1);
+}
+
 function renderRecipes(){
   const box = $('#recipeList'); box.innerHTML = '';
-  const rs = store.recipes;
-  if (!rs.length){
-    box.innerHTML = '<div class="empty">Nothing saved yet.<br>A recipe is one or more stages &mdash; a temperature, how the oven gets there, and how long it stays.</div>';
+  const all = store.recipes;
+  const q = ($('#rSearch') ? $('#rSearch').value : '').trim().toLowerCase();
+  const rs = all.filter(r => matches(r, q));
+  $('#rSearch').style.display = all.length > 3 ? 'block' : 'none';
+  if (!all.length){
+    box.innerHTML = '<div class="empty">Nothing saved yet.<br>A recipe is ingredients, a method, and optionally a programme the oven runs.</div>';
     return;
   }
-  rs.forEach((r, i) => {
+  if (!rs.length){
+    box.innerHTML = '<div class="empty">Nothing matches “' + esc(q) + '”.</div>';
+    return;
+  }
+  rs.forEach((r) => {
+    const i = all.indexOf(r);
     const c = el('div','card');
     c.innerHTML = '<div class="nm">' + esc(r.name || 'Untitled') + '</div>' +
                   '<div class="sub">' + esc(summarize(r)) + '</div>' +
+                  ((r.tags && r.tags.length)
+                    ? '<div class="tags">' + r.tags.map(t => '<span>' + esc(t) + '</span>').join('') + '</div>' : '') +
                   '<div class="go"></div>';
     const view = el('button'); view.textContent = 'View';
     view.onclick = () => showRecipe(r);
@@ -945,35 +1007,116 @@ function renderRecipes(){
   });
 }
 
-// Read view: ingredients, method, notes, and the oven programme if there is one.
-function showRecipe(r){
-  const inner = $('#sheetInner'); inner.innerHTML = '';
-  const h = el('h2'); h.textContent = r.name || 'Untitled';
-  inner.appendChild(h);
-  if (r.servings){ const p = el('p'); p.textContent = 'Makes ' + r.servings; inner.appendChild(p); }
+/* ---------- the screen you actually cook from ---------- */
+let viewing = null, viewScale = 1, viewPct = false, ticked = {};
 
-  const section = (title, body, mono) => {
-    if (!body || !body.trim()) return;
-    const t = el('h3','rsec'); t.textContent = title;
-    const d = el('div', mono ? 'rbody mono' : 'rbody'); d.textContent = body.trim();
-    inner.append(t, d);
-  };
-  section('Ingredients', r.ingredients, true);
-  section('Method', r.steps);
-  section('Notes', r.notes);
+function showRecipe(r){ viewing = r; viewScale = 1; viewPct = false; ticked = {}; drawView(); go('view'); }
 
-  if (r.usesOven !== false){
-    const t = el('h3','rsec'); t.textContent = 'In the oven';
-    const d = el('div','rbody'); d.textContent = summarize(r);
-    inner.append(t, d);
-    const run = el('button','btn go'); run.textContent = 'Send to oven'; run.style.marginTop = '14px';
-    run.onclick = () => { closeSheet(); confirmRun(r); };
-    inner.appendChild(run);
+// One stage, described the way a cook would say it.
+function stageLine(s){
+  const t = Math.round(store.unit === 'F' ? toF(s) : toC(s));
+  const bits = [t + '°' + store.unit + (s.mode === 'wet' ? ' sous vide' : '')];
+  const els = ['top','bottom','rear'].filter(k => s[k]);
+  bits.push(els.length === 3 ? 'all elements' : els.join(' + ') + (els.length > 1 ? ' elements' : ' element'));
+  if (s.steam !== 'none' && s.steamVal > 0)
+    bits.push(s.steamVal + '% ' + (s.steam === 'rh' ? 'humidity' : 'steam'));
+  bits.push('fan ' + s.fan + '%');
+  if (s.vent) bits.push('vent open');
+  bits.push('rack ' + s.rack);
+  if (s.probe > 0) bits.push('to ' + Math.round(store.unit === 'F' ? s.probe : f2c(s.probe)) + '° core');
+  else if (s.timer > 0) bits.push(mins(s.timer));
+  return bits.join(' · ');
+}
+
+function drawView(){
+  const r = viewing; if (!r) return;
+  const box = $('#viewBody'); box.innerHTML = '';
+
+  const h = el('h2','vname'); h.textContent = r.name || 'Untitled';
+  box.appendChild(h);
+  if (r.servings){
+    const p = el('div','vserves');
+    p.textContent = 'Makes ' + r.servings + (viewScale !== 1 ? '  ×' + showQty(viewScale, '') : '');
+    box.appendChild(p);
   }
-  const cl = el('button','btn slim'); cl.textContent = 'Close'; cl.style.marginTop = '10px';
-  cl.onclick = closeSheet;
-  inner.appendChild(cl);
-  $('#sheet').classList.add('on');
+
+  const lines = parseIngredients(r.ingredients);
+  const measured = lines.some(l => l.qty != null);
+  const pct = bakersPercents(lines);
+
+  if (measured){
+    const bar = el('div','vscale');
+    [[0.5,'½'],[1,'1'],[1.5,'1½'],[2,'2'],[3,'3']].forEach(([f,label]) => {
+      const b = el('button'); b.textContent = '×' + label;
+      b.setAttribute('aria-pressed', String(f === viewScale));
+      b.onclick = () => { viewScale = f; drawView(); };
+      bar.appendChild(b);
+    });
+    box.appendChild(bar);
+    if (pct){
+      const t = el('button','btn slim'); t.style.marginTop = '8px';
+      t.textContent = viewPct ? 'Hide baker’s percentages' : 'Show baker’s percentages';
+      t.onclick = () => { viewPct = !viewPct; drawView(); };
+      box.appendChild(t);
+    }
+  }
+
+  if (r.ingredients && r.ingredients.trim()){
+    const t = el('h3','rsec'); t.textContent = 'Ingredients'; box.appendChild(t);
+    const list = el('div','ilist');
+    lines.forEach((l, i) => {
+      if (l.blank){ list.appendChild(el('div','igap')); return; }
+      if (l.heading){ const hd = el('div','ihead'); hd.textContent = l.text; list.appendChild(hd); return; }
+      const row = el('div','irow' + (ticked['i'+i] ? ' done' : ''));
+      const sc = scaleLine(l, viewScale);
+      const q = el('span','iqty');
+      q.textContent = sc.qty != null ? (showQty(sc.qty, sc.unit) + (sc.unit ? ' ' + sc.unit : '')) : '';
+      const nm = el('span','iname'); nm.textContent = l.text;
+      row.append(q, nm);
+      if (viewPct && pct && pct[i] != null){
+        const p = el('span','ipct'); p.textContent = pct[i] + '%'; row.appendChild(p);
+      }
+      row.onclick = () => { ticked['i'+i] = !ticked['i'+i]; drawView(); };
+      list.appendChild(row);
+    });
+    box.appendChild(list);
+  }
+
+  if (r.steps && r.steps.trim()){
+    const t = el('h3','rsec'); t.textContent = 'Method'; box.appendChild(t);
+    // Split on blank lines so a numbered step keeps its wrapped continuation.
+    const steps = r.steps.split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
+    steps.forEach((txt, i) => {
+      const row = el('div','srow' + (ticked['s'+i] ? ' done' : ''));
+      row.textContent = txt;
+      row.onclick = () => { ticked['s'+i] = !ticked['s'+i]; drawView(); };
+      box.appendChild(row);
+    });
+  }
+
+  if (r.usesOven !== false && r.stages && r.stages.length){
+    const t = el('h3','rsec'); t.textContent = 'In the oven'; box.appendChild(t);
+    r.stages.forEach((st, i) => {
+      const row = el('div','ovrow');
+      const n = el('span','ovn'); n.textContent = i + 1;
+      const d = el('span'); d.textContent = stageLine(st);
+      row.append(n, d);
+      if (st.hold){ const w = el('div','ovhold'); w.textContent = 'waits for you to press start on the oven'; row.appendChild(w); }
+      box.appendChild(row);
+    });
+    const run = el('button','btn go'); run.textContent = 'Send to oven'; run.style.marginTop = '16px';
+    run.onclick = () => confirmRun(r);
+    box.appendChild(run);
+  }
+
+  if (r.notes && r.notes.trim()){
+    const t = el('h3','rsec'); t.textContent = 'Notes'; box.appendChild(t);
+    const d = el('div','rbody'); d.textContent = r.notes.trim(); box.appendChild(d);
+  }
+
+  const ed = el('button','btn slim'); ed.textContent = 'Edit this recipe'; ed.style.marginTop = '16px';
+  ed.onclick = () => { const i = store.recipes.findIndex(x => x.id === r.id); if (i >= 0) openEditor(i); };
+  box.appendChild(ed);
 }
 
 /* ---------- editor ---------- */
@@ -985,6 +1128,7 @@ function openEditor(i){
   $('#rIng').value = editing.ingredients || '';
   $('#rSteps').value = editing.steps || '';
   $('#rNotes').value = editing.notes || '';
+  $('#rTags').value = (editing.tags || []).join(', ');
   if (editing.usesOven === undefined) editing.usesOven = true;
   setOvenMode(editing.usesOven);
   $('#btnDelete').style.display = i < 0 ? 'none' : 'block';
@@ -1223,6 +1367,94 @@ function validate(r){
   return errs;
 }
 
+
+/* ============================================================
+   Ingredients — parsing, scaling, baker's percentages
+   Ingredients are stored as the text the cook typed. Nothing here rewrites
+   that; it is parsed on the way to the screen so a line the parser does not
+   understand still displays exactly as written.
+   ============================================================ */
+const UNITS = {
+  g:'g', gram:'g', grams:'g', kg:'kg', mg:'mg',
+  ml:'ml', l:'l', litre:'l', liter:'l',
+  oz:'oz', ounce:'oz', ounces:'oz', lb:'lb', lbs:'lb', pound:'lb', pounds:'lb',
+  tsp:'tsp', teaspoon:'tsp', teaspoons:'tsp',
+  tbsp:'tbsp', tablespoon:'tbsp', tablespoons:'tbsp',
+  cup:'cup', cups:'cup', quart:'quart', qt:'quart', pint:'pint',
+  stick:'stick', sticks:'stick', clove:'clove', cloves:'clove',
+  pinch:'pinch', pinches:'pinch', packet:'packet', packets:'packet'
+};
+// Grams and millilitres are the only units worth a baker's percentage.
+const WEIGHT = { g:1, kg:1000, ml:1, l:1000 };
+
+const FRAC = { 0.125:'⅛', 0.25:'¼', 0.333:'⅓', 0.375:'⅜', 0.5:'½',
+               0.625:'⅝', 0.666:'⅔', 0.75:'¾', 0.875:'⅞' };
+
+function parseQty(t){
+  const mixed = t.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if (mixed) return +mixed[1] + (+mixed[2] / +mixed[3]);
+  const frac = t.match(/^(\d+)\/(\d+)$/);
+  if (frac) return +frac[1] / +frac[2];
+  const n = parseFloat(t);
+  return Number.isFinite(n) ? n : null;
+}
+
+function showQty(v, unit){
+  if (v == null) return '';
+  if (WEIGHT[unit]){
+    // Weights are the precise part of a recipe; keep a decimal only when small.
+    return v >= 20 ? String(Math.round(v)) : String(Math.round(v * 10) / 10);
+  }
+  const whole = Math.floor(v + 1e-9);
+  const rest = v - whole;
+  let best = null, bestD = 0.06;
+  Object.keys(FRAC).forEach(k => {
+    const d = Math.abs(rest - parseFloat(k));
+    if (d < bestD){ bestD = d; best = FRAC[k]; }
+  });
+  if (best) return (whole ? whole : '') + best;
+  if (rest < 0.06) return String(whole);
+  return String(Math.round(v * 100) / 100);
+}
+
+function parseIngLine(raw){
+  const t = (raw || '').trim();
+  if (!t) return { blank: true, raw: raw };
+  // A heading: shouted, or ending in a colon, and never starting with a number.
+  if (!/^[\d.]/.test(t) && (t === t.toUpperCase() && /[A-Z]/.test(t) || /:$/.test(t)))
+    return { heading: true, text: t.replace(/:$/, ''), raw: raw };
+
+  const m = t.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d*\.?\d+)\s*([A-Za-z]+)?\.?\s*(.*)$/);
+  if (!m) return { text: t, raw: raw };
+  const qty = parseQty(m[1]);
+  if (qty == null) return { text: t, raw: raw };
+
+  const word = (m[2] || '').toLowerCase();
+  const unit = UNITS[word] || '';
+  // A word that is not a unit belongs to the ingredient, not to the measure.
+  const rest = unit ? m[3] : ((m[2] ? m[2] + ' ' : '') + m[3]).trim();
+  return { qty: qty, unit: unit, text: rest, raw: raw };
+}
+
+function parseIngredients(text){
+  return String(text || '').split('\n').map(parseIngLine);
+}
+
+// Baker's percentages, flour at 100%. Only lines carrying a weight count, and
+// only when something in the list is actually flour.
+function bakersPercents(lines){
+  const grams = l => (l.qty != null && WEIGHT[l.unit]) ? l.qty * WEIGHT[l.unit] : null;
+  let flour = 0;
+  lines.forEach(l => { const g = grams(l); if (g != null && /\bflours?\b/i.test(l.text)) flour += g; });
+  if (!flour) return null;
+  return lines.map(l => { const g = grams(l); return g == null ? null : Math.round(g / flour * 1000) / 10; });
+}
+
+function scaleLine(l, f){
+  if (l.qty == null) return l;
+  return { qty: l.qty * f, unit: l.unit, text: l.text, raw: l.raw };
+}
+
 /* ============================================================
    Building and sending the cook
    ============================================================ */
@@ -1445,9 +1677,12 @@ function go(v){
   if (v === 'recipes') renderRecipes();
   if (v === 'setup') renderSetup();
   if (v === 'cook') renderCook();
+  if (v === 'view') drawView();
 }
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => go(b.dataset.go));
 
+$('#btnViewBack').onclick = () => go('recipes');
+$('#rSearch').oninput = () => renderRecipes();
 $('#btnStop').onclick = stopCook;
 $('#btnManual').onclick = manualCook;
 $('#btnNew').onclick = () => openEditor(-1);
