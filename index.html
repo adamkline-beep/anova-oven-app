@@ -350,6 +350,7 @@ pre{
   <h2 class="sec">Account</h2>
   <div id="acctBox" class="empty">Recipes are stored on this phone only.</div>
   <button class="btn slim" id="btnSignIn" style="margin-top:9px">Sign in with Google</button>
+  <button class="btn slim" id="btnSyncNow" style="margin-top:9px;display:none">Sync now</button>
   <button class="btn slim" id="btnSignOut" style="margin-top:9px;display:none">Sign out</button>
   <div class="hint">Signing in keeps your recipes in your own Google account, so they survive this phone and appear on any device you sign in from. Your oven token is never synced &mdash; it stays on this phone.</div>
 
@@ -1701,12 +1702,16 @@ function syncApply(list){
   renderAll();
 }
 
-function setAcct(text, signedIn){
+function setAcct(text, signedIn, detail){
   const box = $('#acctBox');
-  if (box){ box.className = signedIn ? '' : 'empty'; box.textContent = text; }
-  const si = $('#btnSignIn'), so = $('#btnSignOut');
+  if (box){
+    box.className = signedIn ? '' : 'empty';
+    box.innerHTML = esc(text) + (detail ? '<div class="dim" style="margin-top:5px">' + esc(detail) + '</div>' : '');
+  }
+  const si = $('#btnSignIn'), so = $('#btnSignOut'), sn = $('#btnSyncNow');
   if (si) si.style.display = signedIn ? 'none' : 'block';
   if (so) so.style.display = signedIn ? 'block' : 'none';
+  if (sn) sn.style.display = signedIn ? 'block' : 'none';
 }
 
 /* ---------- boot ---------- */
@@ -1760,7 +1765,7 @@ const firebaseConfig = {
   appId: "1:633818078784:web:ae02198b453322be2909a5"
 };
 
-let db = null, uid = null, unsub = null, pushTimer = null, ready = false;
+let db = null, uid = null, unsub = null, pushTimer = null, ready = false, lastEmail = '';
 let F = {};
 
 try {
@@ -1805,6 +1810,13 @@ try {
       ...stale.map(id => F.deleteDoc(F.doc(db, 'users', uid, 'recipes', id))),
       ...list.map(r => F.setDoc(F.doc(db, 'users', uid, 'recipes', r.id), r))
     ]);
+    return { count: list.length, pulled: snap.size, pushed: list.length };
+  }
+
+  const when = () => new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
+  function report(email, r){
+    setAcct('Synced as ' + email,  true,
+      r.count + ' recipe' + (r.count===1?'':'s') + ' in your account · last synced ' + when());
   }
 
   function watch(){
@@ -1817,6 +1829,7 @@ try {
       const now = JSON.stringify(store.recipes.map(r => [r.id, r.updatedAt]).sort());
       const next = JSON.stringify(list.map(r => [r.id, r.updatedAt]).sort());
       if (now !== next) syncApply(list);
+      if (lastEmail) report(lastEmail, { count: list.length });
     }, () => {});
   }
 
@@ -1828,9 +1841,13 @@ try {
       return;
     }
     uid = user.uid;
-    setAcct('Synced as ' + (user.email || 'your Google account'), true);
-    try { await firstMerge(); watch(); }
-    catch (e){ setAcct('Signed in, but syncing failed — recipes are safe on this phone.', true); }
+    lastEmail = user.email || 'your Google account';
+    setAcct('Signed in as ' + lastEmail, true, 'Syncing…');
+    try { const r = await firstMerge(); report(lastEmail, r); watch(); }
+    catch (e){
+      setAcct('Signed in as ' + lastEmail, true,
+              'Sync failed: ' + (e && e.code ? e.code : 'unknown') + ' — recipes are safe on this phone.');
+    }
   });
 
   window.ovenSync = {
@@ -1852,7 +1869,14 @@ try {
       // An installed PWA often blocks popups; fall back to a redirect.
       F.signInWithPopup(auth, p).catch(() => F.signInWithRedirect(auth, p));
     },
-    signOut(){ F.signOut(auth); }
+    signOut(){ F.signOut(auth); },
+    async now(){
+      if (!uid){ toast('Not signed in'); return; }
+      setAcct('Signed in as ' + lastEmail, true, 'Syncing…');
+      try { const r = await firstMerge(); report(lastEmail, r); toast('Synced'); }
+      catch (e){ setAcct('Signed in as ' + lastEmail, true,
+                         'Sync failed: ' + (e && e.code ? e.code : 'unknown')); }
+    }
   };
 } catch (e){
   window.ovenSync = null;
@@ -1865,6 +1889,9 @@ document.getElementById('btnSignIn').onclick = () => {
 };
 document.getElementById('btnSignOut').onclick = () => {
   if (window.ovenSync) window.ovenSync.signOut();
+};
+document.getElementById('btnSyncNow').onclick = () => {
+  if (window.ovenSync) window.ovenSync.now();
 };
 </script>
 </body>
