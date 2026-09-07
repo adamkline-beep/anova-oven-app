@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bossy</title>
+<meta name="theme-color" content="#1A1410">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bossy">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1A1410; --surface:#251E18; --raised:#332A23; --line:#443930;
+  --ember:#F0A039; --rose:#E8A0A8; --text:#F6F1EA; --dim:#A79889;
+  --pad:20px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Barlow',system-ui,-apple-system,sans-serif;
+  font-size:17px;line-height:1.5;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  display:flex;flex-direction:column;
+}
+h1,h2,h3{font-family:'Barlow Condensed','Barlow',sans-serif;margin:0;line-height:1.1}
+button{font:inherit;border:0;background:none;color:inherit;cursor:pointer}
+
+header{padding:16px var(--pad) 10px;display:flex;align-items:baseline;gap:10px}
+header h1{font-size:23px;flex:1}
+header .who{color:var(--dim);font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+
+main{flex:1;overflow-y:auto;padding:0 var(--pad) 8px;-webkit-overflow-scrolling:touch}
+
+.lead{color:var(--dim);font-size:15px;margin-bottom:18px}
+
+.sec{font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ember);
+  font-weight:600;margin:22px 0 10px}
+
+.ing{display:flex;gap:12px;align-items:baseline;padding:13px 4px;
+  border-bottom:1px solid var(--line);font-size:19px}
+.ing.done{opacity:.35;text-decoration:line-through}
+.ing .q{min-width:88px;color:var(--ember);font-weight:600;font-variant-numeric:tabular-nums}
+.ing .n{flex:1}
+.ihead{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);
+  margin:20px 0 4px;font-weight:600}
+
+.stepno{color:var(--dim);font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+  font-weight:600;margin-bottom:12px}
+.steptext{font-size:25px;line-height:1.38;white-space:pre-wrap}
+.oven{margin-top:22px;padding:13px 15px;border-radius:12px;background:var(--surface);
+  border:1px solid var(--line);color:var(--dim);font-size:15px;line-height:1.5}
+.oven b{display:block;color:var(--ember);font-size:12.5px;letter-spacing:.08em;
+  text-transform:uppercase;margin-bottom:6px}
+
+.timer{margin-top:22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.tbig{font-family:'Barlow Condensed','Barlow',sans-serif;font-size:44px;
+  font-variant-numeric:tabular-nums;color:var(--ember);line-height:1}
+.tbig.rang{color:var(--rose)}
+.tb{padding:11px 18px;border-radius:11px;background:var(--raised);
+  border:1px solid var(--line);color:var(--ember);font-size:16px}
+
+.compliment{
+  margin:26px 0 6px;padding:15px 17px;border-radius:14px;
+  background:linear-gradient(180deg,rgba(232,160,168,.10),rgba(232,160,168,.04));
+  border:1px solid rgba(232,160,168,.28);
+  color:var(--rose);font-size:16.5px;line-height:1.45;
+}
+.compliment span{display:block;color:rgba(232,160,168,.62);font-size:11.5px;
+  letter-spacing:.09em;text-transform:uppercase;margin-bottom:5px}
+
+footer{display:flex;gap:11px;padding:12px var(--pad) calc(14px + env(safe-area-inset-bottom))}
+footer button{flex:1;padding:17px 0;border-radius:13px;font-size:17px;font-weight:600;
+  background:var(--raised);border:1px solid var(--line)}
+footer button.go{background:var(--ember);color:#241703;border-color:transparent}
+footer button:disabled{opacity:.3}
+
+.empty{padding:40px var(--pad);color:var(--dim);text-align:center;line-height:1.6}
+.empty h2{color:var(--text);font-size:22px;margin-bottom:10px}
+.bar{height:3px;background:var(--raised);border-radius:2px;overflow:hidden;margin:0 var(--pad)}
+.bar i{display:block;height:100%;background:var(--ember);transition:width .25s ease}
+</style>
+</head>
+<body>
+<header><h1 id="title">Bossy</h1><div class="who" id="who"></div></header>
+<div class="bar"><i id="bar" style="width:0"></i></div>
+<main id="main"></main>
+<footer id="foot"></footer>
+
+<script>
+/* ============================================================
+   Bossy — the companion screen.
+   Someone else reads this aloud while the cook has their hands in dough. It
+   takes the whole recipe from the link, so it needs no account, no network
+   after loading, and nothing installed. Big type, one step at a time.
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const el = (t, c) => { const n = document.createElement(t); if (c) n.className = c; return n; };
+
+function unb64url(s){
+  s = String(s || '').replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+let R = null;
+try {
+  const h = location.hash.replace(/^#r=/, '');
+  if (h) R = JSON.parse(unb64url(h));
+} catch (e){ R = null; }
+
+/* ---------- compliments ---------- */
+const DEFAULTS = [
+  'You are extremely good at this.',
+  'The kitchen runs better when you are in it.',
+  'Excellent bossing. Truly top-tier bossing.',
+  'He would have forgotten the salt without you.',
+  'Calm, precise, faintly terrifying. Perfect.',
+  'Whatever this turns out like, you did your part beautifully.',
+  'Somebody has to be in charge, and it should be you.',
+  'That was a very good reading of that step.',
+  'You have excellent timing.',
+  'The dough can tell you know what you are doing.'
+];
+const LINES = (R && Array.isArray(R.compliments) && R.compliments.length) ? R.compliments : DEFAULTS;
+let complimentIdx = Math.floor(Math.random() * LINES.length);
+function nextCompliment(){ complimentIdx = (complimentIdx + 1 + Math.floor(Math.random() * (LINES.length - 1))) % LINES.length; }
+
+/* ---------- ingredients ---------- */
+function parseIng(text){
+  return String(text || '').split('\n').map(raw => {
+    const t = raw.trim();
+    if (!t) return { blank: true };
+    if (!/^[\d.]/.test(t) && (t === t.toUpperCase() && /[A-Z]/.test(t) || /:$/.test(t)))
+      return { heading: true, text: t.replace(/:$/, '') };
+    const m = t.match(/^([\d.\/ ]+?)\s*([A-Za-z]{1,5})?\s+(.*)$/);
+    if (m && /^[\d]/.test(m[1])) return { q: (m[1].trim() + ' ' + (m[2] || '')).trim(), n: m[3] };
+    return { q: '', n: t };
+  });
+}
+
+function durationIn(text){
+  const m = String(text || '').match(
+    /(\d+)\s*(?:[-–—]\s*(\d+))?\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|[smh])\b/i);
+  if (!m) return 0;
+  const n = +(m[2] || m[1]), u = m[3].toLowerCase();
+  if (u[0] === 's') return n;
+  if (u[0] === 'h') return n * 3600;
+  return n * 60;
+}
+function hms(s){
+  s = Math.max(0, Math.round(s));
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0');
+}
+
+/* ---------- state ---------- */
+const STEPS = R ? String(R.steps || '').split(/\n\s*\n/).map(s => s.trim()).filter(Boolean) : [];
+const ING = R ? parseIng(R.ingredients) : [];
+let page = 0;                 // 0 = mise en place, 1..n = steps, n+1 = done
+let ticked = {};
+let timer = null, tickHandle = null;
+
+function startTimer(secs){
+  timer = { endsAt: Date.now() + secs * 1000, rung: false };
+  if (!tickHandle) tickHandle = setInterval(() => {
+    if (timer && !timer.rung && timer.endsAt - Date.now() <= 0){
+      timer.rung = true;
+      if (navigator.vibrate) try { navigator.vibrate([200,100,200,100,400]); } catch (e){}
+    }
+    draw();
+  }, 500);
+  draw();
+}
+function clearTimer(){ timer = null; draw(); }
+
+/* ---------- render ---------- */
+function draw(){
+  const main = $('#main'), foot = $('#foot');
+  main.innerHTML = ''; foot.innerHTML = '';
+
+  if (!R){
+    main.innerHTML = '<div class="empty"><h2>Nothing to boss yet</h2>' +
+      'Ask for a recipe link from the oven app — open a recipe, tap <b>Bossy mode</b>, and send the link.</div>';
+    $('#bar').style.width = '0';
+    return;
+  }
+
+  $('#title').textContent = R.name || 'Recipe';
+  $('#who').textContent = page === 0 ? 'Mise en place' : (page > STEPS.length ? 'Done' : 'Step ' + page);
+  $('#bar').style.width = Math.round(page / (STEPS.length + 1) * 100) + '%';
+
+  if (page === 0){
+    const lead = el('div','lead');
+    lead.textContent = R.servings
+      ? 'Makes ' + R.servings + '. Get all of this out first, then tap Start.'
+      : 'Get all of this out first, then tap Start.';
+    main.appendChild(lead);
+
+    const sec = el('div','sec'); sec.textContent = 'Everything you need';
+    main.appendChild(sec);
+
+    ING.forEach((l, i) => {
+      if (l.blank) return;
+      if (l.heading){ const h = el('div','ihead'); h.textContent = l.text; main.appendChild(h); return; }
+      const row = el('div','ing' + (ticked[i] ? ' done' : ''));
+      const q = el('span','q'); q.textContent = l.q;
+      const n = el('span','n'); n.textContent = l.n;
+      row.append(q, n);
+      row.onclick = () => { ticked[i] = !ticked[i]; draw(); };
+      main.appendChild(row);
+    });
+
+    if (R.oven && R.oven.length){
+      const o = el('div','oven');
+      o.innerHTML = '<b>The oven does this</b>' + R.oven.map(x => escapeHtml(x)).join('<br>');
+      main.appendChild(o);
+    }
+
+    main.appendChild(compliment('While you are here'));
+
+    const go = el('button','go'); go.textContent = STEPS.length ? 'Start' : 'No steps to read';
+    go.disabled = !STEPS.length;
+    go.onclick = () => { page = 1; nextCompliment(); clearTimer(); window.scrollTo(0,0); draw(); };
+    foot.appendChild(go);
+    return;
+  }
+
+  if (page > STEPS.length){
+    main.innerHTML = '<div class="empty"><h2>That is the lot</h2>' +
+      'Nicely bossed. Tell him it looks incredible.</div>';
+    main.appendChild(compliment('One more, you earned it'));
+    const again = el('button'); again.textContent = 'Back to the start';
+    again.onclick = () => { page = 0; draw(); };
+    foot.appendChild(again);
+    return;
+  }
+
+  const txt = STEPS[page - 1];
+  const no = el('div','stepno'); no.textContent = 'Step ' + page + ' of ' + STEPS.length;
+  const body = el('div','steptext'); body.textContent = txt;
+  main.append(no, body);
+
+  const secs = durationIn(txt);
+  if (secs){
+    const wrap = el('div','timer');
+    if (!timer){
+      const b = el('button','tb'); b.textContent = 'Start ' + hms(secs).replace(':00', ' min');
+      b.onclick = () => startTimer(secs);
+      wrap.appendChild(b);
+    } else {
+      const left = Math.max(0, (timer.endsAt - Date.now()) / 1000);
+      const big = el('div','tbig' + (left ? '' : ' rang'));
+      big.textContent = left ? hms(left) : 'Time';
+      const b = el('button','tb'); b.textContent = left ? 'Stop' : 'Clear';
+      b.onclick = clearTimer;
+      wrap.append(big, b);
+    }
+    main.appendChild(wrap);
+  }
+
+  if (page % 2 === 0) main.appendChild(compliment('Meanwhile'));
+
+  const back = el('button'); back.textContent = 'Back';
+  back.onclick = () => { page--; clearTimer(); window.scrollTo(0,0); draw(); };
+  const next = el('button','go'); next.textContent = page === STEPS.length ? 'Finish' : 'Next';
+  next.onclick = () => { page++; nextCompliment(); clearTimer(); window.scrollTo(0,0); draw(); };
+  foot.append(back, next);
+}
+
+function compliment(label){
+  const c = el('div','compliment');
+  const s = el('span'); s.textContent = label;
+  c.appendChild(s);
+  c.appendChild(document.createTextNode(LINES[complimentIdx % LINES.length]));
+  c.onclick = () => { nextCompliment(); draw(); };
+  return c;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+// A compliment on a timer as well as on movement, so a long proof is not silent.
+setInterval(() => { if (R){ nextCompliment(); draw(); } }, 90000);
+
+draw();
+</script>
+</body>
+</html>

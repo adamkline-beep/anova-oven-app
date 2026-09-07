@@ -425,6 +425,14 @@ pre{
   <button class="btn slim" id="btnSignOut" style="margin-top:9px;display:none">Sign out</button>
   <div class="hint">Signing in keeps your recipes in your own Google account, so they survive this phone and appear on any device you sign in from. Your oven token is never synced &mdash; it stays on this phone.</div>
 
+  <h2 class="sec">Bossy mode</h2>
+  <div class="field">
+    <label for="rCompliments">Compliments</label>
+    <textarea id="rCompliments" class="ta" style="min-height:110px" placeholder="One per line. Leave empty for the built-in ones."></textarea>
+    <div class="hint">Shown to whoever is reading the recipe to you. One per line.</div>
+  </div>
+  <button class="btn slim" id="btnComplimentsSave">Save compliments</button>
+
   <h2 class="sec">Screen</h2>
   <div class="seg" id="wakeSeg">
     <button data-w="1" aria-pressed="true">Stay awake</button>
@@ -489,6 +497,13 @@ const store = {
   get recipes(){ try { return JSON.parse(localStorage.getItem('anova.recipes')||'[]'); } catch { return []; } },
   set recipes(v){ localStorage.setItem('anova.recipes', JSON.stringify(v)); },
   // Tombstones: a deleted recipe has to stay deleted when another device syncs.
+  get compliments(){
+    try {
+      const v = JSON.parse(localStorage.getItem('anova.compliments') || 'null');
+      return Array.isArray(v) && v.length ? v : [];
+    } catch { return []; }
+  },
+  set compliments(v){ localStorage.setItem('anova.compliments', JSON.stringify(v.slice(0, 40))); },
   get deleted(){ try { return JSON.parse(localStorage.getItem('anova.deleted')||'[]'); } catch { return []; } },
   set deleted(v){ localStorage.setItem('anova.deleted', JSON.stringify(v.slice(-200))); },
   get wake(){ return localStorage.getItem('anova.wake') !== '0'; },   // on unless turned off
@@ -1160,6 +1175,61 @@ function logBake(r){
   $('#sheet').classList.add('on');
 }
 
+/* ---------- Bossy mode ----------
+   A companion screen for whoever is reading the recipe aloud. The whole recipe
+   travels inside the link, so it needs no account and no permission grant -
+   which is the point: it has to work on someone else's phone in one tap. */
+function b64url(str){
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  bytes.forEach(b => { bin += String.fromCharCode(b); });
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function bossyLink(r){
+  const payload = {
+    name: r.name || 'Recipe',
+    servings: r.servings || '',
+    ingredients: r.ingredients || '',
+    steps: r.steps || '',
+    // Described, not sent as stages: the reader is not driving the oven.
+    oven: (r.usesOven !== false && r.stages) ? r.stages.map((st, i) => (i+1) + '. ' + stageLine(st)) : [],
+    compliments: store.compliments
+  };
+  const base = location.href.split('#')[0].replace(/[^/]*$/, '');
+  return base + 'bossy.html#r=' + b64url(JSON.stringify(payload));
+}
+
+function shareBossy(r){
+  const url = bossyLink(r);
+  const inner = $('#sheetInner'); inner.innerHTML = '';
+  const h = el('h2'); h.textContent = 'Bossy mode';
+  const p = el('p');
+  p.textContent = 'A read-aloud version of this recipe: mise en place first, then one step at a time, ' +
+                  'with timers and the occasional compliment. The whole recipe is inside the link, so ' +
+                  'whoever opens it needs no account — and can add it to their home screen.';
+  const ta = el('textarea','ta'); ta.value = url; ta.readOnly = true; ta.style.minHeight = '90px';
+
+  const send = el('button','btn go'); send.textContent = 'Send the link'; send.style.marginTop = '12px';
+  send.onclick = async () => {
+    const data = { title: 'Bossy: ' + (r.name || 'Recipe'), url: url };
+    if (navigator.share){ try { await navigator.share(data); return; } catch (e){ if (e && e.name === 'AbortError') return; } }
+    try { await navigator.clipboard.writeText(url); toast('Link copied'); }
+    catch { ta.select(); toast('Copy the link above'); }
+  };
+  const open = el('button','btn slim'); open.textContent = 'Open it here'; open.style.marginTop = '10px';
+  open.onclick = () => window.open(url, '_blank');
+  const cl = el('button','btn slim'); cl.textContent = 'Close'; cl.style.marginTop = '10px';
+  cl.onclick = closeSheet;
+
+  if (url.length > 7000){
+    const w = el('div','hint');
+    w.textContent = 'This is a long link because the recipe is long. It will still work, but some apps may wrap it — sending it as a message rather than typing it out is safest.';
+    inner.append(h, p, ta, w, send, open, cl);
+  } else inner.append(h, p, ta, send, open, cl);
+  $('#sheet').classList.add('on');
+}
+
 /* ---------- timers for the steps the oven knows nothing about ----------
    Proofs, rests, tangzhong on the hob. The oven times its own stages; these
    are for everything either side of it. Kept in memory only - a timer is a
@@ -1369,6 +1439,11 @@ function drawView(){
     row.appendChild(x);
     box.appendChild(row);
   });
+  const bossy = el('button','btn slim'); bossy.textContent = 'Bossy mode — send to a helper';
+  bossy.style.marginTop = '16px';
+  bossy.onclick = () => shareBossy(r);
+  box.appendChild(bossy);
+
   const add = el('button','btn slim'); add.textContent = 'Log a bake'; add.style.marginTop = '11px';
   add.onclick = () => logBake(r);
   box.appendChild(add);
@@ -2022,6 +2097,11 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => go(b.data
 
 $('#btnViewBack').onclick = () => go('recipes');
 $('#rSearch').oninput = () => renderRecipes();
+$('#rCompliments').value = store.compliments.join('\n');
+$('#btnComplimentsSave').onclick = () => {
+  store.compliments = $('#rCompliments').value.split('\n').map(x => x.trim()).filter(Boolean);
+  toast(store.compliments.length ? 'Saved ' + store.compliments.length : 'Using the built-in ones');
+};
 
 $('#btnPhoto').onclick = () => {
   const i = el('input'); i.type = 'file'; i.accept = 'image/*';
