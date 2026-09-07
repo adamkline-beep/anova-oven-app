@@ -20,6 +20,9 @@ offers, it never syncs.
 } ] }
 ```
 
+Also accepted: `tags` (array or comma-separated string) and `photo` (an
+`https://` URL; anything else is dropped).
+
 Omit `id`; the app always issues a fresh one on import. `ingredients`, `steps`
 and `notes` are plain text shown as written - no parsing, no format to fight.
 

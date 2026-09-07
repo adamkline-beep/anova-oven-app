@@ -344,6 +344,19 @@ The web config in the module is public project identification, not a secret -
 Google intends it to ship in client code, and access is gated by the rules and
 sign-in.
 
+## Photos
+
+Stored in Firebase Storage at `users/{uid}/recipes/{recipeId}.jpg`, one per
+recipe, with the download URL kept on the recipe as `photo`. Rules are in
+`storage.rules` and, like the Firestore ones, are pasted into the console by
+hand. Uploads need a signed-in account; the button disables itself and says so
+when there is none.
+
+Images are shrunk to 1400px and JPEG q0.82 in a canvas before upload - a phone
+photo is several megabytes and nothing here needs that. `normalizeRecipe()`
+accepts a `photo` only when it is an `https://` URL, so a hand-authored or
+synced recipe cannot smuggle in `javascript:` or a data URI.
+
 ## Getting recipes onto the phone
 
 Three routes, in order of how little the owner has to do:

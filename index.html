@@ -119,6 +119,9 @@ main{padding:var(--pad);max-width:640px;margin:0 auto}
   font-variant-numeric:tabular-nums;line-height:1;margin-top:6px
 }
 .clock small{font-size:15px;color:var(--dim);font-family:'Barlow',sans-serif;font-weight:400;margin-left:8px}
+.rphoto{width:100%;border-radius:10px;display:block}
+.vphoto{width:100%;border-radius:12px;display:block;margin-bottom:13px}
+.thumb{width:100%;height:132px;object-fit:cover;border-radius:9px;display:block;margin-bottom:9px}
 .search{width:100%;padding:11px 13px;margin-bottom:13px;border-radius:10px;
   background:var(--surface);border:1px solid var(--line);color:var(--text);font-size:15px}
 .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
@@ -339,6 +342,13 @@ pre{
   <div class="field">
     <label for="rSteps">Method</label>
     <textarea id="rSteps" class="ta" placeholder="1. Cook the tangzhong&#10;2. Knead until it passes the windowpane test"></textarea>
+  </div>
+  <div class="field">
+    <label>Photo</label>
+    <div id="photoBox"></div>
+    <button class="btn slim" id="btnPhoto" style="margin-top:9px">Add a photo</button>
+    <button class="btn slim" id="btnPhotoX" style="margin-top:9px;display:none">Remove photo</button>
+    <div class="hint" id="photoHint">Photos are stored in your Google account, so they need you signed in.</div>
   </div>
   <div class="field">
     <label for="rTags">Tags</label>
@@ -862,7 +872,7 @@ function blankStage(){
 }
 function blankRecipe(){
   return { id: uuid(), name:'', servings:'', ingredients:'', steps:'', notes:'',
-           tags: [], usesOven: true, stages:[blankStage()] };
+           tags: [], photo:'', usesOven: true, stages:[blankStage()] };
 }
 
 // Anything arriving from outside the app - a paste, a file, the repo library -
@@ -883,6 +893,7 @@ function normalizeRecipe(r){
     notes: txt(r.notes, 8000),
     // Recipes predating this field are all oven programmes.
     usesOven: r.usesOven === undefined ? true : !!r.usesOven,
+    photo: /^https:\/\//.test(String(r.photo || '')) ? String(r.photo) : '',
     tags: (Array.isArray(r.tags) ? r.tags : String(r.tags || '').split(','))
             .map(t => String(t).trim().toLowerCase()).filter(Boolean).slice(0, 12),
     updatedAt: Number.isFinite(+r.updatedAt) ? +r.updatedAt : Date.now(),
@@ -983,7 +994,8 @@ function renderRecipes(){
   rs.forEach((r) => {
     const i = all.indexOf(r);
     const c = el('div','card');
-    c.innerHTML = '<div class="nm">' + esc(r.name || 'Untitled') + '</div>' +
+    c.innerHTML = (r.photo ? '<img class="thumb" src="' + esc(r.photo) + '" alt="">' : '') +
+                  '<div class="nm">' + esc(r.name || 'Untitled') + '</div>' +
                   '<div class="sub">' + esc(summarize(r)) + '</div>' +
                   ((r.tags && r.tags.length)
                     ? '<div class="tags">' + r.tags.map(t => '<span>' + esc(t) + '</span>').join('') + '</div>' : '') +
@@ -1004,6 +1016,41 @@ function renderRecipes(){
     if (r.usesOven === false) c.querySelector('.go').append(view, ed, cp);
     else c.querySelector('.go').append(view, run, ed, cp);
     box.appendChild(c);
+  });
+}
+
+/* ---------- photos ---------- */
+function drawPhoto(){
+  const box = $('#photoBox'); box.innerHTML = '';
+  const has = !!(editing && editing.photo);
+  if (has){
+    const img = el('img','rphoto'); img.src = editing.photo; img.alt = '';
+    box.appendChild(img);
+  }
+  $('#btnPhotoX').style.display = has ? 'block' : 'none';
+  $('#btnPhoto').textContent = has ? 'Replace photo' : 'Add a photo';
+  const signedIn = !!(window.ovenSync && window.ovenSync.uploadPhoto && window.ovenSync.signedIn());
+  $('#btnPhoto').disabled = !signedIn;
+  $('#photoHint').textContent = signedIn
+    ? 'Stored in your Google account and shrunk before upload.'
+    : 'Sign in under Setup to add photos — they are stored in your Google account.';
+}
+
+// Shrink before upload: a phone photo is several megabytes and nothing here
+// needs more than about 1400px.
+function shrink(file, max){
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const f = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * f); c.height = Math.round(img.height * f);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => { URL.revokeObjectURL(url); resolve(b); }, 'image/jpeg', 0.82);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
   });
 }
 
@@ -1032,6 +1079,7 @@ function drawView(){
   const r = viewing; if (!r) return;
   const box = $('#viewBody'); box.innerHTML = '';
 
+  if (r.photo){ const im = el('img','vphoto'); im.src = r.photo; im.alt = ''; box.appendChild(im); }
   const h = el('h2','vname'); h.textContent = r.name || 'Untitled';
   box.appendChild(h);
   if (r.servings){
@@ -1129,6 +1177,7 @@ function openEditor(i){
   $('#rSteps').value = editing.steps || '';
   $('#rNotes').value = editing.notes || '';
   $('#rTags').value = (editing.tags || []).join(', ');
+  drawPhoto();
   if (editing.usesOven === undefined) editing.usesOven = true;
   setOvenMode(editing.usesOven);
   $('#btnDelete').style.display = i < 0 ? 'none' : 'block';
@@ -1683,6 +1732,22 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => go(b.data
 
 $('#btnViewBack').onclick = () => go('recipes');
 $('#rSearch').oninput = () => renderRecipes();
+
+$('#btnPhoto').onclick = () => {
+  const i = el('input'); i.type = 'file'; i.accept = 'image/*';
+  i.onchange = async () => {
+    const f = i.files[0]; if (!f) return;
+    toast('Preparing photo…');
+    const blob = await shrink(f, 1400);
+    if (!blob){ toast('Could not read that image'); return; }
+    try {
+      const url = await window.ovenSync.uploadPhoto(editing.id, blob);
+      editing.photo = url; drawPhoto(); toast('Photo added');
+    } catch (e){ toast('Upload failed: ' + (e && e.code ? e.code : 'unknown')); }
+  };
+  i.click();
+};
+$('#btnPhotoX').onclick = () => { editing.photo = ''; drawPhoto(); toast('Photo removed — save to keep that'); };
 $('#btnStop').onclick = stopCook;
 $('#btnManual').onclick = manualCook;
 $('#btnNew').onclick = () => openEditor(-1);
@@ -2004,18 +2069,20 @@ let db = null, uid = null, unsub = null, pushTimer = null, ready = false, lastEm
 let F = {};
 
 try {
-  const [appMod, authMod, fsMod] = await Promise.all([
+  const [appMod, authMod, fsMod, stMod] = await Promise.all([
     import(`${V}/firebase-app.js`),
     import(`${V}/firebase-auth.js`),
-    import(`${V}/firebase-firestore.js`)
+    import(`${V}/firebase-firestore.js`),
+    import(`${V}/firebase-storage.js`)
   ]);
-  F = { ...appMod, ...authMod, ...fsMod };
+  F = { ...appMod, ...authMod, ...fsMod, ...stMod };
 
   const app = F.initializeApp(firebaseConfig);
   // Persistent cache means the kitchen still works on bad wifi, and writes made
   // offline are sent when the connection comes back.
   db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({}) });
   const auth = F.getAuth(app);
+  const storage = F.getStorage(app);
   ready = true;
 
   const col = () => F.collection(db, 'users', uid, 'recipes');
@@ -2105,6 +2172,13 @@ try {
       F.signInWithPopup(auth, p).catch(() => F.signInWithRedirect(auth, p));
     },
     signOut(){ F.signOut(auth); },
+    signedIn(){ return !!uid; },
+    async uploadPhoto(recipeId, blob){
+      if (!uid) throw { code: 'not-signed-in' };
+      const r = F.ref(storage, 'users/' + uid + '/recipes/' + recipeId + '.jpg');
+      await F.uploadBytes(r, blob, { contentType: 'image/jpeg' });
+      return await F.getDownloadURL(r);
+    },
     async now(){
       if (!uid){ toast('Not signed in'); return; }
       setAcct('Signed in as ' + lastEmail, true, 'Syncing…');
