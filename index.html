@@ -872,7 +872,7 @@ function blankStage(){
 }
 function blankRecipe(){
   return { id: uuid(), name:'', servings:'', ingredients:'', steps:'', notes:'',
-           tags: [], photo:'', usesOven: true, stages:[blankStage()] };
+           tags: [], photo:'', hasPhoto:false, usesOven: true, stages:[blankStage()] };
 }
 
 // Anything arriving from outside the app - a paste, a file, the repo library -
@@ -893,7 +893,10 @@ function normalizeRecipe(r){
     notes: txt(r.notes, 8000),
     // Recipes predating this field are all oven programmes.
     usesOven: r.usesOven === undefined ? true : !!r.usesOven,
+    // An external https image if there is one; otherwise hasPhoto says a JPEG
+    // is held in its own Firestore document, fetched only when shown.
     photo: /^https:\/\//.test(String(r.photo || '')) ? String(r.photo) : '',
+    hasPhoto: !!r.hasPhoto,
     tags: (Array.isArray(r.tags) ? r.tags : String(r.tags || '').split(','))
             .map(t => String(t).trim().toLowerCase()).filter(Boolean).slice(0, 12),
     updatedAt: Number.isFinite(+r.updatedAt) ? +r.updatedAt : Date.now(),
@@ -994,8 +997,7 @@ function renderRecipes(){
   rs.forEach((r) => {
     const i = all.indexOf(r);
     const c = el('div','card');
-    c.innerHTML = (r.photo ? '<img class="thumb" src="' + esc(r.photo) + '" alt="">' : '') +
-                  '<div class="nm">' + esc(r.name || 'Untitled') + '</div>' +
+    c.innerHTML = '<div class="nm">' + esc(r.name || 'Untitled') + '</div>' +
                   '<div class="sub">' + esc(summarize(r)) + '</div>' +
                   ((r.tags && r.tags.length)
                     ? '<div class="tags">' + r.tags.map(t => '<span>' + esc(t) + '</span>').join('') + '</div>' : '') +
@@ -1013,6 +1015,11 @@ function renderRecipes(){
       copy.id = uuid(); copy.name = r.name + ' copy'; touch(copy);
       rs2.splice(i+1, 0, copy); store.recipes = rs2; syncPush(); renderAll(); toast('Duplicated');
     };
+    if (r.photo || r.hasPhoto){
+      const th = el('img','thumb'); th.alt = '';
+      c.insertBefore(th, c.firstChild);
+      fillPhoto(th, r);
+    }
     if (r.usesOven === false) c.querySelector('.go').append(view, ed, cp);
     else c.querySelector('.go').append(view, run, ed, cp);
     box.appendChild(c);
@@ -1022,23 +1029,26 @@ function renderRecipes(){
 /* ---------- photos ---------- */
 function drawPhoto(){
   const box = $('#photoBox'); box.innerHTML = '';
-  const has = !!(editing && editing.photo);
+  const has = !!(editing && (editing.photo || editing.hasPhoto));
   if (has){
-    const img = el('img','rphoto'); img.src = editing.photo; img.alt = '';
+    const img = el('img','rphoto'); img.alt = '';
     box.appendChild(img);
+    fillPhoto(img, editing);
   }
   $('#btnPhotoX').style.display = has ? 'block' : 'none';
   $('#btnPhoto').textContent = has ? 'Replace photo' : 'Add a photo';
   const signedIn = !!(window.ovenSync && window.ovenSync.uploadPhoto && window.ovenSync.signedIn());
   $('#btnPhoto').disabled = !signedIn;
   $('#photoHint').textContent = signedIn
-    ? 'Stored in your Google account and shrunk before upload.'
-    : 'Sign in under Setup to add photos — they are stored in your Google account.';
+    ? 'Kept in your Google account alongside the recipe. Shrunk to fit before upload.'
+    : 'Sign in under Setup to add photos — they are kept in your Google account.';
 }
 
-// Shrink before upload: a phone photo is several megabytes and nothing here
-// needs more than about 1400px.
-function shrink(file, max){
+// A Firestore document caps at 1 MiB and base64 adds a third, so a photo has to
+// come in comfortably under that. Encode, measure, and step down until it fits.
+const PHOTO_CAP = 700000;   // base64 characters
+
+function toDataURL(file, max, quality){
   return new Promise(resolve => {
     const url = URL.createObjectURL(file);
     const img = new Image();
@@ -1047,11 +1057,42 @@ function shrink(file, max){
       const c = document.createElement('canvas');
       c.width = Math.round(img.width * f); c.height = Math.round(img.height * f);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      c.toBlob(b => { URL.revokeObjectURL(url); resolve(b); }, 'image/jpeg', 0.82);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', quality));
     };
     img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
     img.src = url;
   });
+}
+
+async function shrinkToFit(file){
+  const tries = [[1200,0.78],[1000,0.72],[800,0.66],[640,0.6],[480,0.55]];
+  for (const [px, q] of tries){
+    const d = await toDataURL(file, px, q);
+    if (!d) return null;
+    if (d.length <= PHOTO_CAP) return d;
+  }
+  return null;
+}
+
+// Photos are fetched once and kept for the session; the card and the view both
+// want the same image and a Firestore read is not free.
+const photoCache = {};
+async function photoFor(r){
+  if (r.photo) return r.photo;
+  if (!r.hasPhoto) return '';
+  if (photoCache[r.id] !== undefined) return photoCache[r.id];
+  if (!(window.ovenSync && window.ovenSync.getPhoto)) return '';
+  try {
+    const d = await window.ovenSync.getPhoto(r.id);
+    photoCache[r.id] = d || '';
+    return photoCache[r.id];
+  } catch { return ''; }
+}
+
+// Fill an <img> once its data arrives, without blocking the render.
+function fillPhoto(img, r){
+  photoFor(r).then(src => { if (src) img.src = src; else img.remove(); });
 }
 
 /* ---------- the screen you actually cook from ---------- */
@@ -1079,7 +1120,9 @@ function drawView(){
   const r = viewing; if (!r) return;
   const box = $('#viewBody'); box.innerHTML = '';
 
-  if (r.photo){ const im = el('img','vphoto'); im.src = r.photo; im.alt = ''; box.appendChild(im); }
+  if (r.photo || r.hasPhoto){
+    const im = el('img','vphoto'); im.alt = ''; box.appendChild(im); fillPhoto(im, r);
+  }
   const h = el('h2','vname'); h.textContent = r.name || 'Untitled';
   box.appendChild(h);
   if (r.servings){
@@ -1738,16 +1781,23 @@ $('#btnPhoto').onclick = () => {
   i.onchange = async () => {
     const f = i.files[0]; if (!f) return;
     toast('Preparing photo…');
-    const blob = await shrink(f, 1400);
-    if (!blob){ toast('Could not read that image'); return; }
+    const data = await shrinkToFit(f);
+    if (!data){ toast('Could not shrink that image enough — try a smaller one'); return; }
     try {
-      const url = await window.ovenSync.uploadPhoto(editing.id, blob);
-      editing.photo = url; drawPhoto(); toast('Photo added');
+      await window.ovenSync.uploadPhoto(editing.id, data);
+      photoCache[editing.id] = data;
+      editing.photo = ''; editing.hasPhoto = true;
+      drawPhoto(); toast('Photo added');
     } catch (e){ toast('Upload failed: ' + (e && e.code ? e.code : 'unknown')); }
   };
   i.click();
 };
-$('#btnPhotoX').onclick = () => { editing.photo = ''; drawPhoto(); toast('Photo removed — save to keep that'); };
+$('#btnPhotoX').onclick = () => {
+  editing.photo = ''; editing.hasPhoto = false;
+  delete photoCache[editing.id];
+  if (window.ovenSync && window.ovenSync.deletePhoto) window.ovenSync.deletePhoto(editing.id);
+  drawPhoto(); toast('Photo removed — save to keep that');
+};
 $('#btnStop').onclick = stopCook;
 $('#btnManual').onclick = manualCook;
 $('#btnNew').onclick = () => openEditor(-1);
@@ -2069,20 +2119,18 @@ let db = null, uid = null, unsub = null, pushTimer = null, ready = false, lastEm
 let F = {};
 
 try {
-  const [appMod, authMod, fsMod, stMod] = await Promise.all([
+  const [appMod, authMod, fsMod] = await Promise.all([
     import(`${V}/firebase-app.js`),
     import(`${V}/firebase-auth.js`),
-    import(`${V}/firebase-firestore.js`),
-    import(`${V}/firebase-storage.js`)
+    import(`${V}/firebase-firestore.js`)
   ]);
-  F = { ...appMod, ...authMod, ...fsMod, ...stMod };
+  F = { ...appMod, ...authMod, ...fsMod };
 
   const app = F.initializeApp(firebaseConfig);
   // Persistent cache means the kitchen still works on bad wifi, and writes made
   // offline are sent when the connection comes back.
   db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({}) });
   const auth = F.getAuth(app);
-  const storage = F.getStorage(app);
   ready = true;
 
   const col = () => F.collection(db, 'users', uid, 'recipes');
@@ -2173,11 +2221,21 @@ try {
     },
     signOut(){ F.signOut(auth); },
     signedIn(){ return !!uid; },
-    async uploadPhoto(recipeId, blob){
+    // Firebase Storage needs a paid plan for a bucket, so a photo goes in its
+    // own Firestore document instead - free, synced, and kept out of the recipe
+    // document so it is not re-sent on every edit.
+    async uploadPhoto(recipeId, dataUrl){
       if (!uid) throw { code: 'not-signed-in' };
-      const r = F.ref(storage, 'users/' + uid + '/recipes/' + recipeId + '.jpg');
-      await F.uploadBytes(r, blob, { contentType: 'image/jpeg' });
-      return await F.getDownloadURL(r);
+      await F.setDoc(F.doc(db, 'users', uid, 'photos', recipeId), { jpeg: dataUrl, at: Date.now() });
+    },
+    async getPhoto(recipeId){
+      if (!uid) return '';
+      const d = await F.getDoc(F.doc(db, 'users', uid, 'photos', recipeId));
+      return d.exists() ? (d.data().jpeg || '') : '';
+    },
+    async deletePhoto(recipeId){
+      if (!uid) return;
+      try { await F.deleteDoc(F.doc(db, 'users', uid, 'photos', recipeId)); } catch (e){}
     },
     async now(){
       if (!uid){ toast('Not signed in'); return; }

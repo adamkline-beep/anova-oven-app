@@ -346,16 +346,24 @@ sign-in.
 
 ## Photos
 
-Stored in Firebase Storage at `users/{uid}/recipes/{recipeId}.jpg`, one per
-recipe, with the download URL kept on the recipe as `photo`. Rules are in
-`storage.rules` and, like the Firestore ones, are pasted into the console by
-hand. Uploads need a signed-in account; the button disables itself and says so
-when there is none.
+**Firebase Storage is not used.** Google requires the paid Blaze plan to
+provision a bucket, even though the free allowance would cover this. Photos go
+in Firestore instead, as one document per recipe at
+`users/{uid}/photos/{recipeId}` holding a base64 JPEG. No extra rules are
+needed - the existing `users/{uid}/**` rule already covers it.
 
-Images are shrunk to 1400px and JPEG q0.82 in a canvas before upload - a phone
-photo is several megabytes and nothing here needs that. `normalizeRecipe()`
-accepts a `photo` only when it is an `https://` URL, so a hand-authored or
-synced recipe cannot smuggle in `javascript:` or a data URI.
+- A Firestore document caps at **1 MiB** and base64 adds a third, so
+  `shrinkToFit()` encodes at 1200px q0.78 and steps down through 1000, 800, 640
+  and 480 until the string is under `PHOTO_CAP` (700k characters). If even 480px
+  will not fit, the upload is refused rather than failing at the server.
+- The photo is kept **out of the recipe document** deliberately: recipes are
+  rewritten on every save and pushed whole, and a base64 JPEG riding along would
+  make every edit expensive.
+- `photoCache` holds fetched images for the session; a Firestore read is not
+  free and the card and the view both want the same image.
+- `hasPhoto` on the recipe says a document exists. `photo` remains for an
+  external `https://` URL and is still validated, so a recipe from a paste, a
+  file or the library cannot smuggle in `javascript:` or a data URI.
 
 ## Getting recipes onto the phone
 
