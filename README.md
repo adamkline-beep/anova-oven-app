@@ -1,11 +1,14 @@
-# Oven — Anova Precision Oven v1 controller
+# Oven — a recipe app that drives an Anova Precision Oven v1
 
-A small web app that installs to your Android home screen like a normal app, stores
-your recipes on the phone, and sends them to the oven over Anova's official
-developer API.
+A small web app that installs to your Android home screen like a normal app. It
+holds your recipes — ingredients, method, photos, notes, and a log of how each
+bake actually went — and for the ones that use the oven, it sends the cook over
+Anova's official developer API.
 
-No account, no server of mine, no Home Assistant. Your token and recipes never
-leave your phone.
+No server of mine and no Home Assistant. **Your oven token stays on the phone and
+is never synced.** Recipes are kept on the phone and, if you sign in with Google,
+mirrored to your own Firebase project so they survive the phone and appear on any
+device you sign in from.
 
 ---
 
@@ -13,16 +16,26 @@ leave your phone.
 
 - **Cook** — live dry/wet bulb temperature against the setpoint, humidity, probe,
   fan, timer, plus door-open, empty-tank and failed-element warnings. One big
-  stop button while a cook is running.
-- **Recipes** — multi-stage cooks. Each stage has a temperature, dry or sous vide
-  mode, which heating elements run, humidity or steam percentage, fan speed, vent,
-  rack position, and how the stage ends (timer, probe target, or hold until you say so).
+  stop button while a cook is running, and the screen stays awake while it runs.
+- **Recipes** — ingredients and method alongside the oven programme, or no oven
+  programme at all for the things you cook on the hob. Scale a recipe ×½ to ×3,
+  see baker's percentages when there's flour in it, tick ingredients and steps off
+  as you go, and see the amounts a step needs listed under that step. A step that
+  names a duration gets a timer.
+- **Multi-stage cooks** — each stage has a temperature, dry or sous vide mode,
+  which heating elements run, humidity or steam percentage, fan speed, vent, rack
+  position, and how the stage ends: a timer, a probe target, or holding until you
+  press start on the oven itself.
+- **Bake log** — what you changed and how it came out, kept with the recipe.
+- **Bossy mode** — a read-aloud companion page for whoever is helping. One link,
+  no account, works on an iPhone, and it hands out compliments.
 - **Setup** — paste your token, switch °F/°C (which also changes the oven's own
-  display), export and import recipes as a JSON file.
+  display), sign in to sync, share your recipe list, export and import.
 
 The app refuses to send anything the v1 oven will reject: all three heating elements
 on at once, a sous vide setpoint above 212 °F, 400 °F on the bottom element alone,
-and so on.
+a stage in the middle with no way to end, and so on. The oven refuses such cooks
+silently, so the app catches them first.
 
 ---
 

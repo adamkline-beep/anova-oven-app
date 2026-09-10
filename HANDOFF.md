@@ -10,14 +10,23 @@ Written 2026-09-06. Owner runs an **Anova Precision Oven 1.0, 120V, firmware 2.1
 
 ## What this is
 
-A single-file web app (`index.html`) that installs to an Android home screen as a
-PWA and controls the oven through Anova's official developer API. Deployed on
-GitHub Pages, served from the `main` branch at the repo root. No backend, no
-Home Assistant. Token and recipes live in the phone's
-`localStorage`.
+A recipe app that also drives the oven. `index.html` is the whole app - one
+file, installed to an Android home screen as a PWA - and it holds recipes with
+ingredients, method, photos and a log of past bakes, of which the oven programme
+is one optional part. It talks to the oven through Anova's official developer
+API. Deployed on GitHub Pages, served from the `main` branch at the repo root.
 
-Supporting files: `manifest.webmanifest`, `sw.js` (network-first shell cache),
-`icon-192.png`, `icon-512.png`, `icon-maskable.png`, `README.md`.
+Recipes live in Firestore under the owner's Google account and are mirrored to
+`localStorage`, which stays the local source of truth; the oven token lives only
+in `localStorage` and is never synced. No server of our own.
+
+`bossy.html` is a second, standalone page for whoever is reading the recipe out
+loud - see **The helper page** below.
+
+Supporting files: `bossy.html`, `manifest.webmanifest`, `sw.js` (network-first
+shell cache), the icons, `recipes/library.json` (the shared library),
+`firestore.rules`, `RECIPES.md`, `docs/anova-quick-start-guide.pdf`, and
+`.claude/skills/add-recipe/`.
 
 There used to be a `netlify.toml` that sent `Cache-Control: max-age=0,
 must-revalidate` for `sw.js` and `index.html`, so the phone could never keep
@@ -29,8 +38,10 @@ handler is network-first, so `recipes/library.json` is re-fetched whenever the
 phone is online. Worst case a deploy takes ten minutes to reach a phone that has
 the app open. If that ever becomes a problem, bump `CACHE` in `sw.js`.
 
-**Status: working on real hardware.** Connects, reads live state, starts and stops
-cooks. Confirmed 2026-09-05/06.
+**Status: working on real hardware.** Connects, reads live state, starts and
+stops cooks, including multi-stage and sous vide. Confirmed 2026-09-05/06/07.
+Recipe sync and photos confirmed 2026-09-07. Two things have never run against
+the oven: the **mid-recipe hold** and the **probe path** - see Open items.
 
 ---
 
@@ -243,21 +254,51 @@ vide mode requires steam. All of this is enforced in `validate()` before sending
 CSS, HTML and JS inline. No frameworks, no CDN except Google Fonts (Barlow and
 Barlow Condensed). Vanilla DOM.
 
-- `store` — localStorage wrapper: `anova.token`, `anova.unit`, `anova.recipes`.
+The oven half:
+
+- `store` — localStorage wrapper: `anova.token`, `anova.unit`, `anova.recipes`,
+  `anova.deleted`, `anova.wake`, `anova.compliments`, `anova.shareId`,
+  `anova.sharing`.
 - `connect()` / `scheduleRetry()` — socket with exponential backoff, forced
   reconnect after 8 min of silence, reconnect on `visibilitychange`.
 - `handle()` / `normalize()` — inbound routing, v1/v2 shape flattening.
 - `renderCook()` / `drawScale()` / `drawStrip()` — live screen.
-- `blankStage()` / `stageForm()` / `validate()` — recipe editor.
 - `stagePair()` / `runRecipe()` / `stopCook()` — payload construction and sending.
+  **Read "The multi-stage payload" before touching `stagePair()`.**
 - `expect()` — command acknowledgement tracking.
+- `wakeApply()` / `wakeFollow()` — screen wake lock during a cook.
+
+The recipe half:
+
+- `normalizeRecipe()` — **the trust boundary.** Everything arriving from outside
+  (paste, file, library, sync) goes through it: gaps filled, types coerced,
+  ranges clamped, ids reissued, `photo` accepted only as an `https://` URL.
+- `validate()` — oven constraints; returns early for `usesOven: false`.
+- `parseIngredients()` / `parseIngLine()` / `parseQty()` / `showQty()` —
+  quantity, unit and name off each line. Handles `1/2` and `½`.
+- `bakersPercents()` — flour at 100%, when the list contains flour.
+- `scaleLine()` — used by the ×½–×3 control in the cooking view.
+- `splitSteps()` — blank-line **or** numbered-line separated methods.
+- `mentionedIn()` / `headingFor()` / `NOTANAME` — which ingredients a step names,
+  so the amounts can be listed under it. Longest run of words wins; a lone
+  descriptor ("large", "can") never matches.
+- `durationIn()` — pulls a duration out of a step for the timer button.
+- `parsePastedRecipe()` — prose to recipe, opened in the editor for review.
+- `drawView()` — the cooking screen. `showRecipe()` / `logBake()` / `shareBossy()`.
+- The Firestore module is a separate inline `<script type="module">` at the end
+  of the file. It attaches `window.ovenSync`; everything degrades if it never
+  loads.
 
 Recipe object:
 ```js
-{id, name, stages:[{temp, unit:'F'|'C', mode:'dry'|'wet', steam:'none'|'rh'|'pct',
-  steamVal, top, bottom, rear, fan, vent, rack, timer, timerStart, probe}]}
+{id, name, servings, ingredients, steps, notes, source, tags:[], photo, hasPhoto,
+ usesOven, updatedAt, bakes:[{id, at, changed, result}],
+ stages:[{temp, unit:'F'|'C', mode:'dry'|'wet', steam:'none'|'rh'|'pct',
+   steamVal, top, bottom, rear, fan, vent, rack, timer, probe, hold}]}
 ```
 `probe` is always stored in °F. `temp` is stored in whatever `unit` says.
+`ingredients`, `steps` and `notes` are plain text, shown as written - nothing
+rewrites what the cook typed.
 
 ### Design tokens
 
@@ -400,6 +441,33 @@ skipped when its anchor matched twice - so the copy in `btnSave` never gained
 the tags line. Both now call one `readEditor()`. Do not duplicate that block
 again, and do not write a patch that skips silently when it does not match.
 
+## The helper page (`bossy.html`)
+
+A standalone page for whoever is reading the recipe aloud - "bossy mode", an
+in-joke with Kat. Big type, mise en place first as a checkable list plus the
+whole method, then one step at a time with the ingredients that step needs
+listed under it, a timer where a step names a duration, and a rotating
+compliment. No SDK, no account, nothing to install; it adds to an iPhone home
+screen like an app.
+
+- **It gets recipes two ways.** `?s=<shareId>` fetches the owner's shared list
+  over the plain Firestore REST API and shows a pickable list. `?r=<payload>`
+  carries a single recipe base64'd in the URL. Both are cached in
+  `localStorage`, so the home-screen icon works with no signal.
+- **Use the query string, never the fragment.** iOS discards the fragment when
+  a page is added to the home screen, and the icon opens to nothing. `#r=` is
+  still parsed so older links keep working.
+- **Sharing** publishes `{owner, at, data}` to `shared/{shareId}` - one public
+  document at an unguessable 32-hex address, republished on every recipe change.
+  It carries ingredients and method only: no photos, no notes, no bake log,
+  nothing that could drive the oven. "Stop sharing" deletes it.
+- **It duplicates `mentionedIn()`, `splitSteps()`, `UNITS` and `NOTANAME`
+  verbatim** from `index.html`. That is deliberate - the page loads no modules -
+  but it has already caused one silent bug, where the two files disagreed about
+  the shape of a parsed ingredient and no amounts ever appeared. **If you change
+  one of those functions, change both, and make sure the data shapes still
+  match.**
+
 ## Adding a recipe
 
 There is a project skill at `.claude/skills/add-recipe/` covering the workflow,
@@ -485,20 +553,34 @@ ever matters, add them back one at a time to a wet stage.
 
 ## Open items
 
-1. ~~Mid-cook state capture.~~ Done 2026-09-06, see above. Still wanted: a capture
-   **at the preheat -> cook transition** (does `stageTransitionPendingUserAction`
-   flip to true?) and one from a genuinely multi-stage recipe (4+ API stages).
-2. **Confirm the mid-recipe hold.** "Salt rolls" opens with a 45 min steel soak
-   and then waits for the oven's panel before baking. The protocol supports it
-   but this app's use of it has never run. Worth a dry run without dough.
-3. **Probe cook on hardware. BLOCKED - the owner's probe broke (2026-09-06).**
-   The probe branch of `stagePair()` has never run against the oven and cannot
-   be tested until the probe is replaced. It sends `temperatureProbe`; the SDK
-   docs call it `probe` in one example. Treat the whole probe path as unverified,
-   and do not assume a probe recipe works just because timed recipes do.
-3. **Which id `processedCommandIds` echoes** — requestId or cookId.
-4. Possible features: notification when a stage ends, cook history,
-   per-recipe rack reminders. (Screen wake lock: done 2026-09-06.)
+**Unverified paths, in the order they will bite:**
+
+1. **The mid-recipe hold.** "Salt rolls" opens with a 45 min steel soak and then
+   waits for a press on the oven's panel before baking. The protocol supports it
+   - Anova's own plan sets `userActionRequired` on every stage - but this app's
+   use of it has never run. Worth a dry run with an empty oven and a two-minute
+   soak before anyone commits dough to it.
+2. **The probe path. BLOCKED** - the owner's probe broke 2026-09-06 and cannot
+   be tested until it is replaced. `stagePair()` sends `temperatureProbe`; the
+   SDK docs call it `probe` in one example. Do not assume a probe recipe works
+   because timed ones do.
+3. **A capture at the preheat -> cook transition**, to see
+   `stageTransitionPendingUserAction` actually flip.
+4. **Which id `processedCommandIds` echoes** - `requestId` or `cookId`. Evidence
+   points at `requestId`; never confirmed.
+5. **DOM wiring is generally untested by the harness.** JavaScriptCore covers
+   logic, not rendering. Several screens have only been driven through the
+   in-app browser by hand.
+
+**Ideas, not commitments:** a notification when a stage ends (needs background
+execution the web cannot give - that is the Capacitor conversation from
+2026-09-06), per-recipe rack reminders, sub-recipes or reusable components
+(the tangzhong and the honey butter are both recipes inside recipes).
+
+**Done since this list was written:** screen wake lock, multi-stage cooks, sous
+vide, error reporting, Firestore sync, photos, ingredients and method, scaling
+and baker's percentages, tags and search, the bake log, paste import, step
+timers, and the helper page.
 
 ## Screen wake lock
 
@@ -649,6 +731,38 @@ Failures used to leave no trace: a 2.6 s toast and nothing else, which is why
 ## Things not to break
 
 - Never show a setpoint while idle; the oven reports a stale one.
-- Never store the access token in a file — it belongs only in phone storage.
+- Never store the access token in a file, and never sync it. It belongs only in
+  the phone's `localStorage`. The Firebase web config in the module is *not* a
+  secret and is fine in source; the oven token is the real one.
 - Keep the send → acknowledge flow; don't revert to claiming success on send.
-- Keep the validation guards; the oven silently rejects bad combinations.
+- Keep the validation guards; the oven silently rejects bad combinations, so a
+  guard removed here becomes an hour of diagnosis in a kitchen.
+- `localStorage` stays the local source of truth. The app must remain fully
+  usable signed out, offline, or with the Firebase SDK failing to load — every
+  swallowed error in the sync module is deliberate.
+- Everything from outside goes through `normalizeRecipe()`. Do not add a path
+  that writes a recipe without it.
+- Don't overwrite the owner's `notes`, and never touch `bakes` — that is his
+  record of what actually happened.
+- Don't ship an experiment as a stored preference. A value saved on the phone
+  outlives the experiment and silently disables the next fix; that cost a full
+  test cycle on 2026-09-06.
+- Don't write a patch that skips silently when its anchor doesn't match. That is
+  how the editor lost its tags for a day.
+
+## Working habits that paid off
+
+- **The oven says nothing when it refuses a cook.** Get a capture from Anova's
+  own app and diff against it rather than reasoning from docs; two rounds of
+  confident wrong answers came from trusting third-party documentation over the
+  device. `fixtures/state-v1-official-anova-multistage.json` is the gold copy.
+- **Check what is on the phone, not what is in the repo.** The fan rule was
+  dismissed once because the library file had been fixed while the owner's saved
+  copy still held the old value.
+- **There is no Node on this Mac.** JavaScriptCore is the test runner; extract
+  the functions under test out of `index.html` with Python and drive them with
+  stubs. See Testing.
+- **The in-app browser can drive the deployed app**, which is the only way to
+  check rendering. Clear `caches` first or the service worker serves a stale
+  shell. Screenshots come out misaligned when the page is scrolled — trust the
+  DOM over the picture.
