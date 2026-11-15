@@ -507,7 +507,7 @@ const el = (t, c) => { const n = document.createElement(t); if (c) n.className =
 const cookUuid = () => 'android-' + uuid();
 // Bumped with CACHE in sw.js on every deploy. Shown in Setup and included in
 // the raw dump, because "is this the new build?" has cost several test runs.
-const APP_BUILD = 'oven-v41';
+const APP_BUILD = 'oven-v42';
 
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
   'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -2269,7 +2269,11 @@ function seqTick(){
     const timed = st.timer > 0;
     const ranOut = !timed || seq.lastLeft == null || seq.lastLeft <= 10;
     if (!ranOut){
-      seqStop('Stage ' + (seq.idx + 1) + ' ended early — stopped at the oven? Sequence stopped.');
+      // If we sent the stop ourselves, say so rather than asking.
+      const ours = Date.now() - stoppedAt < 20000;
+      seqStop(ours
+        ? 'You stopped the oven, so the sequence stopped at stage ' + (seq.idx + 1) + '.'
+        : 'Stage ' + (seq.idx + 1) + ' ended early — stopped at the oven? Sequence stopped.');
       return;
     }
     if (seq.idx + 1 >= seq.stages.length){
@@ -2324,8 +2328,11 @@ function runRecipe(r){
   go('cook');
 }
 
+let stoppedAt = 0;   // when this app last asked the oven to stop
+
 function stopCook(){
   if (!device) return;
+  stoppedAt = Date.now();
   const reqId = uuid();
   if (!send({ command:'CMD_APO_STOP', requestId: reqId, payload:{ id: device.id, type:'CMD_APO_STOP' } })) return;
   toast('Stopping');

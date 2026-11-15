@@ -587,19 +587,32 @@ ever matters, add them back one at a time to a wet stage.
 
 **Unverified paths, in the order they will bite:**
 
-1. **The mid-recipe hold.** "Salt rolls" opens with a 45 min steel soak and then
-   waits for a press on the oven's panel before baking. The protocol supports it
-   - Anova's own plan sets `userActionRequired` on every stage - but this app's
-   use of it has never run. Worth a dry run with an empty oven and a two-minute
-   soak before anyone commits dough to it.
+1. ~~The mid-recipe hold.~~ **Solved differently and CONFIRMED ON HARDWARE
+   2026-11-15.** The oven's own hold was never made to work. The sequencer
+   replaces it: the app sends each stage itself and owns the pause. A dry run
+   went stage 1 -> pause -> Continue -> stage 2 -> stage 3 automatically, and
+   stopping the oven mid-stage correctly stood the sequence down. Still untested
+   at real baking temperatures and durations.
 2. **The probe path. BLOCKED** - the owner's probe broke 2026-09-06 and cannot
    be tested until it is replaced. `stagePair()` sends `temperatureProbe`; the
    SDK docs call it `probe` in one example. Do not assume a probe recipe works
    because timed ones do.
 3. **A capture at the preheat -> cook transition**, to see
-   `stageTransitionPendingUserAction` actually flip.
-4. **Which id `processedCommandIds` echoes** - `requestId` or `cookId`. Evidence
-   points at `requestId`; never confirmed.
+   `stageTransitionPendingUserAction` actually flip. Less interesting now that
+   the sequencer does not rely on it.
+
+   Also logged 2026-11-15: a `heatingElements.top.failed: true` flag that
+   survived a cook but **cleared on a power cycle** - latched, not a real fault.
+   Check `watts` and `on` before believing one, and power-cycle before escalating.
+
+   And: this oven drops off wifi repeatedly (three times in one afternoon,
+   `lastDisconnectedTimestamp` each time). No command reaches an offline oven;
+   the front panel is the only control then. Not an app problem.
+4. ~~Which id `processedCommandIds` echoes.~~ **`requestId`. Confirmed
+   2026-11-15:** a `CMD_APO_STOP` with requestId `bfaa7f9f-...` appeared as the
+   first entry in `processedCommandIds` in the very next state message. The
+   acknowledgement path in `expect()` can stop watching for `cookId`, though
+   watching both is harmless.
 5. **DOM wiring is generally untested by the harness.** JavaScriptCore covers
    logic, not rendering. Several screens have only been driven through the
    in-app browser by hand.
