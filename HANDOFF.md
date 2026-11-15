@@ -377,6 +377,12 @@ the whole point.
   rather than starting the next stage on food that is not ready.
 - Nothing started within 30 s of a send means the oven refused it silently, and
   the sequence stops with the stage named.
+- **The hold is stripped from the stage before it is sent.** A `hold` stage
+  compiled normally carries `userActionRequired: true`, which makes the *oven*
+  wait for its own panel as well - so Continue sent a stage the oven then
+  refused to begin, which is exactly the behaviour sequencing exists to avoid.
+  Confirmed on hardware 2026-11-15: the pause worked, Continue did nothing.
+  `seqSend()` clears `hold` on its copy; the recipe keeps it.
 - The wake lock is held for the whole sequence, not just while the oven is
   cooking: between stages nothing is cooking but the app still has to be alive
   to send the next one. **It only works while the app is open.**

@@ -2204,7 +2204,11 @@ function startSequence(r){
 // One stage, sent as a complete little cook of its own.
 function seqSend(){
   if (!seq || !device) return;
-  const st = seq.stages[seq.idx];
+  // The hold belongs to the sequencer, not to the oven. Left on, stagePair()
+  // sets userActionRequired and the oven waits for its own panel as well - so
+  // tapping Continue here sent a stage the oven then refused to begin. The
+  // whole point of sequencing is that this app owns the pause.
+  const st = Object.assign({}, seq.stages[seq.idx], { hold: false });
   const stages = stagePair(st, true, st.mode !== 'wet');
   const reqId = uuid(), cookId = cookUuid();
   seq.cookId = cookId; seq.phase = 'sending'; seq.lastLeft = null; seq.startedAt = Date.now();
