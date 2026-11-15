@@ -22,80 +22,6 @@
       ]
     },
     {
-      "name": "Salt rolls",
-      "stages": [
-        {
-          "temp": 350,
-          "unit": "F",
-          "mode": "dry",
-          "steam": "none",
-          "steamVal": 0,
-          "top": false,
-          "bottom": true,
-          "rear": false,
-          "fan": 25,
-          "vent": false,
-          "rack": 2,
-          "timer": 2700,
-          "probe": 0,
-          "hold": false
-        },
-        {
-          "temp": 350,
-          "unit": "F",
-          "mode": "dry",
-          "steam": "pct",
-          "steamVal": 30,
-          "top": false,
-          "bottom": true,
-          "rear": false,
-          "fan": 100,
-          "vent": false,
-          "rack": 2,
-          "timer": 300,
-          "probe": 0,
-          "hold": true
-        },
-        {
-          "temp": 350,
-          "unit": "F",
-          "mode": "dry",
-          "steam": "none",
-          "steamVal": 0,
-          "top": false,
-          "bottom": true,
-          "rear": false,
-          "fan": 25,
-          "vent": false,
-          "rack": 2,
-          "timer": 780,
-          "probe": 0,
-          "hold": false
-        },
-        {
-          "temp": 375,
-          "unit": "F",
-          "mode": "dry",
-          "steam": "none",
-          "steamVal": 0,
-          "top": true,
-          "bottom": true,
-          "rear": false,
-          "fan": 25,
-          "vent": false,
-          "rack": 2,
-          "timer": 240,
-          "probe": 0,
-          "hold": false
-        }
-      ],
-      "servings": "9 rolls, 9x9 pan or 10in cast iron",
-      "ingredients": "TANGZHONG\n20g bread flour\n50g whole milk\n50g water\n\nDOUGH\n330g bread flour\n7g instant yeast\n35g sugar\n6g fine sea salt\n100g whole milk, lukewarm\n1 egg + 1 yolk, room temperature\n55g unsalted European butter, softened\n\nPAN AND TOPPING\n30g butter, melted, for the pan\n30g butter, melted, for brushing after\nFlaky Maldon salt",
-      "steps": "1. Tangzhong. Whisk flour, milk and water in a small pan over medium-low heat 2-3 min to a thick paste. Cool 5 min to lukewarm.\n\n2. Dough. Combine flour, sugar, salt and yeast. Add milk, egg, yolk and the tangzhong. Mix low 2 min, then medium-low 5 min. Add butter a tablespoon at a time, then knead 8-10 min to the windowpane test.\n\n3. First rise. Oiled bowl, covered. Use the Proof dough recipe: 80F at 60% humidity, about 60 min, until doubled.\n\n4. Shape. Butter the pan with 30g melted butter. Divide into 9 pieces of 70-75g, roll each tight, arrange 3x3.\n\n5. Second proof on the counter, covered, 45-60 min, while the oven and steel heat. Pull it slightly under-proofed - puffy, not fully doubled.\n\n6. Bake. Send this recipe with the baking steel on rack 2. It soaks the steel for 45 min, then holds. Set the pan on the steel and press start on the oven.\n\n7. Finish. Brush with the remaining 30g melted butter the moment they come out, scatter Maldon salt, rest 10 min in the pan.",
-      "notes": "2026-09-05 bake: good crumb, but the bottom was not crisp and the top was overcooked. Cause was the rear element - convection at 375F for 20+ min browns the crowns. This version drops it: bottom element only for the long middle, colour from a short top+bottom finish, and a preheated steel under the pan for the base.\n\nNext time: check colour at the start of stage 4 and cut it short if they are already there. Target 195-200F internal (needs the probe).",
-      "usesOven": true
-    },
-    {
       "name": "Pork ragù over creamy polenta",
       "servings": "8 servings",
       "source": "Bon Appétit, 17 February 2015",
@@ -238,6 +164,85 @@
       "ingredients": "2 pounds baby bok choy (about 8 heads), halved lengthwise\n2 tablespoons neutral oil\n4 garlic cloves, thinly sliced\n1 tablespoon fresh ginger, julienned\n1 pinch red pepper flakes\n\nSAUCE\n1 tablespoon soy sauce\n1 tablespoon sake or Shaoxing wine\n1 teaspoon rice vinegar\n1 teaspoon toasted sesame oil\n2 tablespoons water\n\nTO FINISH\n1 teaspoon toasted sesame seeds\n2 scallions, thinly sliced",
       "steps": "1. Prep ahead. Halve the bok choy lengthwise, wash well in a bowl of cold water — grit hides at the base — and dry thoroughly in a salad spinner or on a towel. Wet bok choy steams instead of searing. Slice the garlic, julienne the ginger, and whisk the sauce together in a small bowl. All of it holds in the fridge for several hours.\n\n2. Cook this in one of the pans the fish came out of, off the same burner. The fond is worth having and it is one less pan on a stove that is already full.\n\n3. Pat the bok choy dry again if it has wept. Set the pan over medium-high and add the neutral oil.\n\n4. Lay the bok choy cut side down in a single layer and leave it alone until the cut faces are browned, 2-3 minutes. Do it in two batches rather than crowding the pan.\n\n5. Push the greens aside, add the garlic, ginger and red pepper flakes to the bare patch, and cook until fragrant, about 30 seconds. Do not let the garlic go past pale gold.\n\n6. Pour in the sauce, cover, and steam until a knife slips into the thickest stem with slight resistance, about 2 minutes. Baby bok choy goes from crisp to limp quickly, so start checking at 90 seconds.\n\n7. Uncover, toss, and let the liquid reduce to a glaze that coats the leaves, about 1 minute. Off the heat, scatter with sesame seeds and scallions.",
       "notes": "Written to go with the miso and soy sea bass, and scaled to the same five.\n\nTiming: about 6 minutes once the pan is hot. It is the last thing to cook — start it while the fish rests under its glaze. It will hold in the pan off the heat for ten minutes if the table is not ready.\n\nThe sauce deliberately borrows the sake already open for the fish marinade.\n\nNot yet cooked. On the first go, judge the steam time by the size of the heads: 2 minutes suits heads around 4 inches, less for anything smaller."
+    },
+    {
+      "name": "Salt rolls — heat the steel",
+      "servings": "Run this first, 45 minutes before you bake",
+      "source": "Companion to Salt rolls",
+      "tags": [
+        "bread",
+        "preheat"
+      ],
+      "usesOven": true,
+      "ingredients": "",
+      "steps": "",
+      "notes": "Sent on its own rather than as the first stage of the bake, because asking the oven to hold mid-plan and wait for its panel has never worked reliably here.\n\nBaking steel on rack 2, nothing else in the oven. 450F with the top and bottom elements is well above the 356F the bottom element can reach alone — the point is to charge the steel, which then dumps that heat into the base of the pan from below.\n\nThe oven stops when the 45 minutes are up. Send the Salt rolls bake whenever you are ready; the steel holds its heat for a good while with the door shut.",
+      "stages": [
+        {
+          "temp": 450,
+          "unit": "F",
+          "mode": "dry",
+          "steam": "none",
+          "steamVal": 0,
+          "top": true,
+          "bottom": true,
+          "rear": false,
+          "fan": 25,
+          "vent": false,
+          "rack": 2,
+          "timer": 2700,
+          "probe": 0,
+          "hold": false
+        }
+      ]
+    },
+    {
+      "name": "Salt rolls",
+      "servings": "9 rolls, 9x9 pan or 10in cast iron",
+      "source": "Gemini, adapted",
+      "tags": [
+        "bread",
+        "steakhouse",
+        "weekend"
+      ],
+      "usesOven": true,
+      "ingredients": "TANGZHONG\n20g bread flour\n50g whole milk\n50g water\n\nDOUGH\n330g bread flour\n7g instant yeast\n35g sugar\n6g fine sea salt\n100g whole milk, lukewarm\n1 large egg + 1 large egg yolk\n55g unsalted European butter, softened\n\nPAN AND TOPPING\n30g ghee, for the pan\n30g unsalted butter, melted, for brushing after\nFlaky Maldon salt",
+      "steps": "1. Tangzhong. Whisk flour, milk and water in a small pan over medium-low heat 2-3 minutes to a thick paste. Cool 5 minutes to lukewarm.\n\n2. Dough. Combine flour, sugar, salt and yeast. Add milk, egg, yolk and the tangzhong. Mix low 2 minutes, then medium-low 5 minutes. Add butter a tablespoon at a time, then knead 8-10 minutes to the windowpane test.\n\n3. First rise. Oiled bowl, covered. Use the Proof dough recipe: 80F at 60% humidity, about 60 minutes, until doubled.\n\n4. Shape. Coat the pan with the ghee — not butter. Butter is about a sixth water, and that water has to boil off before the base can start frying. Divide into 9 pieces of 70-75g, roll each tight, arrange 3x3.\n\n5. Second proof on the counter, covered, 45-60 minutes, while the steel heats. Pull it slightly under-proofed — puffy, not fully doubled.\n\n6. Heat the steel. Send the Salt rolls — heat the steel recipe 45 minutes before you want to bake. Steel on rack 2, nothing else in the oven.\n\n7. Bake. Set the pan on the hot steel and send this recipe. 16 minutes on the bottom element alone, then 4 minutes with the top on for colour. Start looking at 2 minutes into that second stage and stop it early if they are already there.\n\n8. Out of the pan at once. Give them 2 minutes to firm up, then lift the rolls onto a rack — leaving them to rest in the pan traps their own steam against the base and undoes the crust you just built. Brush with the melted butter, scatter Maldon salt, serve warm.",
+      "notes": "2026-11 bake: bottom was a bit soggy. This version attacks that four ways.\n\nGHEE IN THE PAN. Adam's idea and the right one. Butter is 15-18% water and that water has to boil away before the base can fry; ghee is pure fat, so frying starts immediately. Browned butter, with the solids strained out, does the same job and tastes better — brown it, let it settle, use the clear fat. Keep plain butter for brushing afterwards, where its water does not matter.\n\nCHARGE THE STEEL HOT. The bottom element alone caps at 356F, so \"crank the heat\" cannot be done with the element. The steel can: it soaks at 450F with top and bottom on, then gives that heat straight to the pan base once the element drops to its own ceiling.\n\nNO STEAM. The old version ran 30% steam for the first five minutes. On an enriched roll sitting in fat, steam condenses onto exactly the surface being crisped, and it also forces the fan to full, which browned the crowns. Gone.\n\nOUT OF THE PAN. Resting ten minutes in the pan was probably doing as much damage as anything in the oven. Steam from nine hot rolls has nowhere to go but the base.\n\nEarlier, 2026-09: the rear element was dropped because convection at 375F for 20+ minutes overcooked the tops. That holds — colour now comes from four minutes of top and bottom at the end.\n\nStill no probe, so judge by colour and the clock rather than 195-200F internal.",
+      "stages": [
+        {
+          "temp": 356,
+          "unit": "F",
+          "mode": "dry",
+          "steam": "none",
+          "steamVal": 0,
+          "top": false,
+          "bottom": true,
+          "rear": false,
+          "fan": 25,
+          "vent": false,
+          "rack": 2,
+          "timer": 960,
+          "probe": 0,
+          "hold": false
+        },
+        {
+          "temp": 400,
+          "unit": "F",
+          "mode": "dry",
+          "steam": "none",
+          "steamVal": 0,
+          "top": true,
+          "bottom": true,
+          "rear": false,
+          "fan": 25,
+          "vent": false,
+          "rack": 2,
+          "timer": 240,
+          "probe": 0,
+          "hold": false
+        }
+      ]
     }
   ]
 }
