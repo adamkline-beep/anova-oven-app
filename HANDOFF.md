@@ -371,10 +371,18 @@ the whole point.
   resumes. `seqTick()` runs off every inbound state message.
 - Phases: `sending` -> `running` -> next stage, or `waiting` when the next stage
   has `hold`.
-- **Finishing is inferred**, because the oven never says a stage finished: the
-  `cook` object goes away *after* its timer reached zero. If it goes away with
-  time still on the clock, somebody stopped the oven and the sequence stops too
-  rather than starting the next stage on food that is not ready.
+- **Finishing is inferred**, because the oven never says a stage finished.
+  Two signals, either will do: the `cook` object goes away after its timer
+  reached zero, **or** the timer reached zero and the oven has been sitting on
+  it for 15 s. The second was added 2026-11-15 after a dry run stalled between
+  stages - the oven does not reliably clear `cook` when a single-stage cook
+  ends, and waiting only for that left the sequence stuck until the owner
+  pressed stop, which is what then advanced it.
+  If the cook goes away with time still on the clock, somebody stopped the oven
+  and the sequence stops too rather than starting the next stage on food that is
+  not ready.
+- **A stage still preheating is not a finished stage.** The timer has to have
+  actually run at some point (`sawTimer`) before a zero reading counts.
 - Nothing started within 30 s of a send means the oven refused it silently, and
   the sequence stops with the stage named.
 - **The hold is stripped from the stage before it is sent.** A `hold` stage
@@ -386,6 +394,13 @@ the whole point.
 - The wake lock is held for the whole sequence, not just while the oven is
   cooking: between stages nothing is cooking but the app still has to be alive
   to send the next one. **It only works while the app is open.**
+
+**Descending temperatures are slow.** Every sequenced stage runs its own
+preheat, and a stage cooler than the one before it can only be reached by the
+oven cooling through its vent, which takes minutes. It looks like a stall. The
+banner now says "the oven is getting to 90F, now 78F" so it reads as progress.
+Worth remembering for Salt rolls: the 450F soak is followed by a 356F bake, and
+what makes that bearable is the door being open to load the rolls.
 
 ## Holding a stage for the cook
 

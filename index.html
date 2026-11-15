@@ -507,7 +507,7 @@ const el = (t, c) => { const n = document.createElement(t); if (c) n.className =
 const cookUuid = () => 'android-' + uuid();
 // Bumped with CACHE in sw.js on every deploy. Shown in Setup and included in
 // the raw dump, because "is this the new build?" has cost several test runs.
-const APP_BUILD = 'oven-v42';
+const APP_BUILD = 'oven-v43';
 
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
   'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -866,9 +866,18 @@ function drawSeqBar(){
     line = 'Paused before stage ' + n + ' of ' + of + ' — get the food in, then tap Continue.';
   else if (seq.phase === 'sending')
     line = 'Starting stage ' + n + ' of ' + of + ' — ' + t + '°' + store.unit + '.';
-  else
-    line = 'Stage ' + n + ' of ' + of + ' — ' + t + '°' + store.unit +
-           '. The app sends the next one when this ends.';
+  else {
+    const tm = (snap && snap.nodes && snap.nodes.timer) || {};
+    const cur = snap && snap.nodes && snap.nodes.temperatureBulbs &&
+                T(snap.nodes.temperatureBulbs.dry && snap.nodes.temperatureBulbs.dry.current, store.unit);
+    if (tm.mode !== 'running' && !seq.sawTimer)
+      // Reaching temperature can mean cooling, if the last stage was hotter.
+      line = 'Stage ' + n + ' of ' + of + ' — the oven is getting to ' + t + '°' + store.unit +
+             (cur != null ? ', now ' + cur + '°' : '') + '. The timer starts when it does.';
+    else
+      line = 'Stage ' + n + ' of ' + of + ' — ' + t + '°' + store.unit +
+             '. The app sends the next one when this ends.';
+  }
   $('#seqWhat').textContent = line;
 
   const btns = $('#seqBtns'); btns.innerHTML = '';
@@ -2199,7 +2208,8 @@ function startSequence(r){
   seq = {
     id: r.id, name: r.name || 'Recipe',
     stages: JSON.parse(JSON.stringify(r.stages)),
-    idx: 0, phase: 'sending', cookId: null, lastLeft: null, startedAt: Date.now()
+    idx: 0, phase: 'sending', cookId: null, lastLeft: null,
+    sawTimer: false, zeroAt: null, startedAt: Date.now()
   };
   seqSave();
   go('cook');
@@ -2216,7 +2226,8 @@ function seqSend(){
   const st = Object.assign({}, seq.stages[seq.idx], { hold: false });
   const stages = stagePair(st, true, st.mode !== 'wet');
   const reqId = uuid(), cookId = cookUuid();
-  seq.cookId = cookId; seq.phase = 'sending'; seq.lastLeft = null; seq.startedAt = Date.now();
+  seq.cookId = cookId; seq.phase = 'sending'; seq.lastLeft = null;
+  seq.sawTimer = false; seq.zeroAt = null; seq.startedAt = Date.now();
   seqSave();
 
   const ok = send({
@@ -2252,7 +2263,16 @@ function seqTick(){
   if (!seq || !snap) return;
   const cooking = !!snap.cook;
   const tm = (snap.nodes && snap.nodes.timer) || {};
-  if (tm.mode === 'running' && tm.current != null) seq.lastLeft = tm.current;
+  if (tm.mode === 'running' && tm.current != null){
+    seq.lastLeft = tm.current;
+    seq.sawTimer = true;
+    seq.zeroAt = null;
+  }
+  // The oven does not always clear its cook object when a stage's timer ends -
+  // it can sit there at zero. Waiting only for the cook to disappear left the
+  // sequence stuck until somebody pressed stop, which is what then advanced it.
+  // So a finished timer counts as a finished stage in its own right.
+  if (seq.sawTimer && tm.mode !== 'running' && !seq.zeroAt) seq.zeroAt = Date.now();
 
   if (seq.phase === 'sending'){
     if (cooking){ seq.phase = 'running'; seqSave(); renderCook(); }
@@ -2264,10 +2284,13 @@ function seqTick(){
   }
 
   if (seq.phase === 'running'){
-    if (cooking) return;
     const st = seq.stages[seq.idx];
     const timed = st.timer > 0;
-    const ranOut = !timed || seq.lastLeft == null || seq.lastLeft <= 10;
+    // Finished either way: the cook went away, or its timer ran out and the
+    // oven is lingering. Give the oven 15s to tidy up before stepping in.
+    const timerDone = timed && seq.sawTimer && seq.zeroAt && (Date.now() - seq.zeroAt > 15000);
+    if (cooking && !timerDone) return;
+    const ranOut = !timed || timerDone || seq.lastLeft == null || seq.lastLeft <= 10;
     if (!ranOut){
       // If we sent the stop ourselves, say so rather than asking.
       const ours = Date.now() - stoppedAt < 20000;

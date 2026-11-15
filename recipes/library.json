@@ -239,7 +239,7 @@
       "usesOven": true,
       "ingredients": "",
       "steps": "1. Empty the oven — no steel, no pan, nothing. Close the door.\n\n2. Send this recipe and choose \"Start — one stage at a time\".\n\n3. Stage 1 preheats briefly, then runs for a minute. Watch the banner say \"Stage 1 of 3\".\n\n4. It should then pause: \"Paused before stage 2 of 3 — get the food in, then tap Continue.\" Nothing happens until you tap it. That is the part worth testing.\n\n5. Tap Continue. Stage 2 runs a minute, then stage 3 should follow on its own with no tap from you.\n\n6. After stage 3 the banner disappears and you get \"Sequencer dry run — all stages done\".",
-      "notes": "Tests the sequencer, not the baking. Three stages, one minute each, 77F — the oven’s minimum — with the bottom element alone in an empty oven. A first run at 100F spent over two minutes still climbing: the bottom element is only 700W, it heats the floor, and the sensor that decides \"preheated\" is up top. Four degrees above room temperature instead of twenty-seven, so the preheat is quick and the whole run costs a rounding error of electricity.\n\nWhat it proves:\n- a stage is sent and the oven starts it\n- the app notices the stage ended, which it has to infer since the oven never says so\n- a hold stage pauses and waits for the app's Continue, not the oven's panel\n- the next stage fires automatically when there is no hold\n- the sequence finishes and clears itself\n\nSame temperature on all three stages on purpose: nothing has to reheat between them.\n\nIf it stops early saying \"ended early — stopped at the oven?\", the end-of-stage detection is too twitchy at one-minute timers. That is useful to know and is a bug in the app, not in your oven. Tell Claude the exact wording.\n\nDelete this recipe once the sequencer is trusted.",
+      "notes": "Tests the sequencer, not the baking. Three one-minute stages on the bottom element in an empty oven, at 77F, 90F then 105F — barely warm, so the 700W element does almost nothing and the run costs a rounding error of electricity.\n\nThe temperatures climb on purpose. Each sequenced stage runs its own preheat, and a stage cooler than the one before it can only be reached by the oven cooling down, which it does slowly through the vent — so three stages at the same temperature left it sitting there apparently doing nothing. Ascending steps are reached by heating, which is quick.\n\nWhat it proves:\n- a stage is sent and the oven starts it\n- the app notices the stage ended, which it has to infer since the oven never says so\n- a hold stage pauses and waits for the app's Continue, not the oven's panel\n- the next stage fires automatically when there is no hold\n- the sequence finishes and clears itself\n\nWatch the banner. \"The oven is getting to 90F, now 78F\" means it is preheating and the timer has not started — that is normal and not a stall.\n\nIf it stops saying a stage ended early when you did not stop anything, tell Claude the exact wording.\n\nDelete this recipe once the sequencer is trusted.",
       "stages": [
         {
           "temp": 77,
@@ -258,7 +258,7 @@
           "hold": false
         },
         {
-          "temp": 77,
+          "temp": 90,
           "unit": "F",
           "mode": "dry",
           "steam": "none",
@@ -274,7 +274,7 @@
           "hold": true
         },
         {
-          "temp": 77,
+          "temp": 105,
           "unit": "F",
           "mode": "dry",
           "steam": "none",
