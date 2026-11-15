@@ -467,6 +467,7 @@ pre{
   <div id="devInfo" class="empty">Not connected yet.</div>
 
   <h2 class="sec">Troubleshooting</h2>
+  <div class="hint" id="buildLine" style="margin-bottom:10px"></div>
   <div id="lastErr" style="display:none"></div>
   <button class="btn slim" id="btnRefProof" style="margin-bottom:6px">Send Anova&rsquo;s own proof stage</button>
   <div class="hint" style="margin-bottom:14px">A diagnostic. Replays one stage copied verbatim from a recipe the Anova app ran on this oven &mdash; 80.6&deg;F sous vide, 60% humidity, 40 min. If this starts, the problem is in how this app builds a cook. If it does not, the oven is refusing a plan it accepted from Anova&rsquo;s own app.</div>
@@ -504,6 +505,10 @@ const el = (t, c) => { const n = document.createElement(t); if (c) n.className =
 // Anova's own client prefixes cookId with the platform (confirmed against a
 // running official recipe: "android-68b93a6d-..."). Stage ids stay bare.
 const cookUuid = () => 'android-' + uuid();
+// Bumped with CACHE in sw.js on every deploy. Shown in Setup and included in
+// the raw dump, because "is this the new build?" has cost several test runs.
+const APP_BUILD = 'oven-v41';
+
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
   'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16);
@@ -2412,6 +2417,8 @@ function manualCook(){
    Setup screen
    ============================================================ */
 function renderSetup(){
+  const bl = $('#buildLine');
+  if (bl) bl.textContent = 'Build ' + APP_BUILD;
   const le = $('#lastErr');
   if (lastError){
     le.style.display = 'block';
@@ -2759,6 +2766,7 @@ $('#btnRaw').onclick = () => {
   const h = el('h2'); h.textContent = 'Raw oven data';
   const p = el('p'); p.textContent = 'The last state from the oven, the last command sent, and the last error — copy all of it.';
   const dump = {
+    build: APP_BUILD,
     capturedAt: new Date().toISOString(),
     lastError: lastError ? { at: lastError.at.toISOString(), message: lastError.msg, frame: lastError.frame || null } : null,
     lastCommandSent: lastSent ? { at: lastSent.at.toISOString(), frame: lastSent.frame } : null,
