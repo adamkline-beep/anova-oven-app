@@ -166,17 +166,18 @@
       "notes": "Written to go with the miso and soy sea bass, and scaled to the same five.\n\nTiming: about 6 minutes once the pan is hot. It is the last thing to cook — start it while the fish rests under its glaze. It will hold in the pan off the heat for ten minutes if the table is not ready.\n\nThe sauce deliberately borrows the sake already open for the fish marinade.\n\nNot yet cooked. On the first go, judge the steam time by the size of the heads: 2 minutes suits heads around 4 inches, less for anything smaller."
     },
     {
-      "name": "Salt rolls — heat the steel",
-      "servings": "Run this first, 45 minutes before you bake",
-      "source": "Companion to Salt rolls",
+      "name": "Salt rolls",
+      "servings": "9 rolls, 9x9 pan or 10in cast iron",
+      "source": "Gemini, adapted",
       "tags": [
         "bread",
-        "preheat"
+        "steakhouse",
+        "weekend"
       ],
       "usesOven": true,
-      "ingredients": "",
-      "steps": "",
-      "notes": "Sent on its own rather than as the first stage of the bake, because asking the oven to hold mid-plan and wait for its panel has never worked reliably here.\n\nBaking steel on rack 2, nothing else in the oven. 450F with the top and bottom elements is well above the 356F the bottom element can reach alone — the point is to charge the steel, which then dumps that heat into the base of the pan from below.\n\nThe oven stops when the 45 minutes are up. Send the Salt rolls bake whenever you are ready; the steel holds its heat for a good while with the door shut.",
+      "ingredients": "TANGZHONG\n20g bread flour\n50g whole milk\n50g water\n\nDOUGH\n330g bread flour\n7g instant yeast\n35g sugar\n6g fine sea salt\n100g whole milk, lukewarm\n1 large egg + 1 large egg yolk\n55g unsalted European butter, softened\n\nPAN AND TOPPING\n30g ghee, for the pan\n30g unsalted butter, melted, for brushing after\nFlaky Maldon salt",
+      "steps": "1. Tangzhong. Whisk flour, milk and water in a small pan over medium-low heat 2-3 minutes to a thick paste. Cool 5 minutes to lukewarm.\n\n2. Dough. Combine flour, sugar, salt and yeast. Add milk, egg, yolk and the tangzhong. Mix low 2 minutes, then medium-low 5 minutes. Add butter a tablespoon at a time, then knead 8-10 minutes to the windowpane test.\n\n3. First rise. Oiled bowl, covered. Use the Proof dough recipe: 80F at 60% humidity, about 60 minutes, until doubled.\n\n4. Shape. Coat the pan with the ghee — not butter. Butter is about a sixth water, and that water has to boil off before the base can start frying. Divide into 9 pieces of 70-75g, roll each tight, arrange 3x3.\n\n5. Second proof on the counter, covered, 45-60 minutes, while the steel heats. Pull it slightly under-proofed — puffy, not fully doubled.\n\n6. Send this recipe with the baking steel on rack 2 and nothing else in the oven. Choose one stage at a time. It charges the steel at 450F for 45 minutes, then pauses and waits for you — the app asks, not the oven.\n\n7. Set the pan on the hot steel and tap Continue. 16 minutes on the bottom element alone, then 4 minutes with the top on for colour. Watch from 2 minutes into that last stage and stop it early if they are already brown enough.\n\n8. Out of the pan at once. Two minutes to firm up, then lift the rolls onto a rack — resting them in the pan traps their own steam against the base and undoes the crust. Brush with the melted butter, scatter Maldon salt, serve warm.",
+      "notes": "2026-11 bake: bottom was a bit soggy. This version attacks that four ways.\n\nGHEE IN THE PAN. Adam's idea and the right one. Butter is 15-18% water and that water must boil away before the base can fry; ghee is pure fat and starts frying at once. Browned butter with the solids strained does the same and tastes better. Plain butter stays for brushing afterwards, where its water does not matter.\n\nCHARGE THE STEEL HOT. The bottom element alone caps at 356F, so the heat cannot be cranked with the element. The steel can: it soaks at 450F with top and bottom on, then hands that heat to the pan base once the bake drops to the element's own ceiling.\n\nNO STEAM. The old version ran 30% for the first five minutes. On an enriched roll sitting in fat, steam condenses onto exactly the surface being crisped, and it forces the fan to full, which browned the crowns.\n\nOUT OF THE PAN. Resting ten minutes in the pan was probably doing as much harm as anything in the oven.\n\nRUN IT ONE STAGE AT A TIME. The pause between the soak and the bake is handled by the app, not by the oven's panel — the oven's own mid-plan hold has never worked here. Keep the app open while it runs.\n\nEarlier, 2026-09: the rear element was dropped because convection at 375F for 20+ minutes overcooked the tops. That still holds; colour now comes from four minutes of top and bottom at the end.\n\nStill no probe, so judge by colour and the clock rather than 195-200F internal.",
       "stages": [
         {
           "temp": 450,
@@ -193,23 +194,7 @@
           "timer": 2700,
           "probe": 0,
           "hold": false
-        }
-      ]
-    },
-    {
-      "name": "Salt rolls",
-      "servings": "9 rolls, 9x9 pan or 10in cast iron",
-      "source": "Gemini, adapted",
-      "tags": [
-        "bread",
-        "steakhouse",
-        "weekend"
-      ],
-      "usesOven": true,
-      "ingredients": "TANGZHONG\n20g bread flour\n50g whole milk\n50g water\n\nDOUGH\n330g bread flour\n7g instant yeast\n35g sugar\n6g fine sea salt\n100g whole milk, lukewarm\n1 large egg + 1 large egg yolk\n55g unsalted European butter, softened\n\nPAN AND TOPPING\n30g ghee, for the pan\n30g unsalted butter, melted, for brushing after\nFlaky Maldon salt",
-      "steps": "1. Tangzhong. Whisk flour, milk and water in a small pan over medium-low heat 2-3 minutes to a thick paste. Cool 5 minutes to lukewarm.\n\n2. Dough. Combine flour, sugar, salt and yeast. Add milk, egg, yolk and the tangzhong. Mix low 2 minutes, then medium-low 5 minutes. Add butter a tablespoon at a time, then knead 8-10 minutes to the windowpane test.\n\n3. First rise. Oiled bowl, covered. Use the Proof dough recipe: 80F at 60% humidity, about 60 minutes, until doubled.\n\n4. Shape. Coat the pan with the ghee — not butter. Butter is about a sixth water, and that water has to boil off before the base can start frying. Divide into 9 pieces of 70-75g, roll each tight, arrange 3x3.\n\n5. Second proof on the counter, covered, 45-60 minutes, while the steel heats. Pull it slightly under-proofed — puffy, not fully doubled.\n\n6. Heat the steel. Send the Salt rolls — heat the steel recipe 45 minutes before you want to bake. Steel on rack 2, nothing else in the oven.\n\n7. Bake. Set the pan on the hot steel and send this recipe. 16 minutes on the bottom element alone, then 4 minutes with the top on for colour. Start looking at 2 minutes into that second stage and stop it early if they are already there.\n\n8. Out of the pan at once. Give them 2 minutes to firm up, then lift the rolls onto a rack — leaving them to rest in the pan traps their own steam against the base and undoes the crust you just built. Brush with the melted butter, scatter Maldon salt, serve warm.",
-      "notes": "2026-11 bake: bottom was a bit soggy. This version attacks that four ways.\n\nGHEE IN THE PAN. Adam's idea and the right one. Butter is 15-18% water and that water has to boil away before the base can fry; ghee is pure fat, so frying starts immediately. Browned butter, with the solids strained out, does the same job and tastes better — brown it, let it settle, use the clear fat. Keep plain butter for brushing afterwards, where its water does not matter.\n\nCHARGE THE STEEL HOT. The bottom element alone caps at 356F, so \"crank the heat\" cannot be done with the element. The steel can: it soaks at 450F with top and bottom on, then gives that heat straight to the pan base once the element drops to its own ceiling.\n\nNO STEAM. The old version ran 30% steam for the first five minutes. On an enriched roll sitting in fat, steam condenses onto exactly the surface being crisped, and it also forces the fan to full, which browned the crowns. Gone.\n\nOUT OF THE PAN. Resting ten minutes in the pan was probably doing as much damage as anything in the oven. Steam from nine hot rolls has nowhere to go but the base.\n\nEarlier, 2026-09: the rear element was dropped because convection at 375F for 20+ minutes overcooked the tops. That holds — colour now comes from four minutes of top and bottom at the end.\n\nStill no probe, so judge by colour and the clock rather than 195-200F internal.",
-      "stages": [
+        },
         {
           "temp": 356,
           "unit": "F",
@@ -224,7 +209,7 @@
           "rack": 2,
           "timer": 960,
           "probe": 0,
-          "hold": false
+          "hold": true
         },
         {
           "temp": 400,

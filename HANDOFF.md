@@ -355,6 +355,32 @@ no `timer.startType`, no `timerStartOnDetect` anywhere. The last stage may set
 `userActionRequired: true` when it has neither timer nor probe, which parks the
 oven at temperature until someone presses its panel.
 
+## The sequencer — running stages one at a time
+
+`startSequence(r)` sends each stage as its own single-stage cook and advances
+when that stage ends, instead of handing the oven the whole plan. Offered in the
+confirm sheet for any recipe with more than one stage; "Send the whole plan
+instead" is still there.
+
+Why it exists: the oven's multi-stage handling is unreliable here and its
+mid-plan hold never worked. With the sequencer, **a `hold` stage becomes a
+Continue button in this app** rather than a press on the oven's panel, which is
+the whole point.
+
+- State lives in `seq` and is mirrored to `anova.seq`, so a reload mid-bake
+  resumes. `seqTick()` runs off every inbound state message.
+- Phases: `sending` -> `running` -> next stage, or `waiting` when the next stage
+  has `hold`.
+- **Finishing is inferred**, because the oven never says a stage finished: the
+  `cook` object goes away *after* its timer reached zero. If it goes away with
+  time still on the clock, somebody stopped the oven and the sequence stops too
+  rather than starting the next stage on food that is not ready.
+- Nothing started within 30 s of a send means the oven refused it silently, and
+  the sequence stops with the stage named.
+- The wake lock is held for the whole sequence, not just while the oven is
+  cooking: between stages nothing is cooking but the app still has to be alive
+  to send the next one. **It only works while the app is open.**
+
 ## Holding a stage for the cook
 
 A recipe stage carries `hold`. When set, `stagePair()` puts

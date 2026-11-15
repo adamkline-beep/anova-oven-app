@@ -159,6 +159,11 @@ main{padding:var(--pad);max-width:640px;margin:0 auto}
 .sing.done .sbox{background:var(--ember);border-color:var(--ember)}
 .stext{flex:1;line-height:1.45}
 .stext b{color:var(--ember);font-weight:600;font-variant-numeric:tabular-nums}
+.seqbar{background:var(--surface);border:1px solid var(--ember);border-radius:14px;
+  padding:14px 15px;margin-bottom:14px}
+.seqwhat{font-size:14.5px;line-height:1.45;color:var(--text);margin-bottom:11px}
+.seqbar .row{display:flex;gap:9px}
+.seqbar .btn{flex:1;margin:0}
 .trow{display:flex;align-items:center;gap:9px;margin-top:9px}
 .tbtn{font-size:13px;padding:6px 11px;border-radius:8px;background:var(--raised);
   border:1px solid var(--line);color:var(--ember)}
@@ -315,6 +320,10 @@ pre{
     <div class="strip" id="strip"></div>
   </div>
 
+  <div class="seqbar" id="seqBar" style="display:none">
+    <div class="seqwhat" id="seqWhat"></div>
+    <div class="row" id="seqBtns"></div>
+  </div>
   <div class="now" id="cookNow" style="display:none">
     <div class="stage" id="stageTxt"></div>
     <div class="clock" id="clockTxt"></div>
@@ -721,6 +730,7 @@ function handle(m){
     if (pending && snap.processed.some(id => pending.ids.includes(id))){
       toast(pending.label); pending = null; clearTimeout(pendingTimer);
     }
+    seqTick();
     renderCook(); renderSetup();
     return;
   }
@@ -775,7 +785,9 @@ function renderCook(){
   const cur = T(bulb && bulb.current, u);
   const set = T(bulb && bulb.setpoint, u);
   const cooking = !!(snap && snap.cook) || (snap && snap.mode && /cook|preheat/i.test(snap.mode));
-  wakeFollow(!!cooking);
+  // A sequence between stages is not cooking, but the app has to stay awake to
+  // send the next one.
+  wakeFollow(!!cooking || !!seq);
 
   const big = $('#curTemp');
   big.textContent = cur == null ? '--' : cur;
@@ -821,6 +833,7 @@ function renderCook(){
     box.style.display = 'none';
   }
 
+  drawSeqBar();
   $('#btnStop').style.display = cooking ? 'block' : 'none';
   $('#idleZone').style.display = cooking ? 'none' : 'block';
   if (!cooking) renderQuickList();
@@ -833,6 +846,35 @@ function userStage(stages, i){
   if (!total) return { index: i + 1, total: stages.length };   // unexpected shape
   const done = stages.slice(0, i + 1).filter(s => s.type === 'cook').length;
   return { index: done + (stages[i] && stages[i].type === 'preheat' ? 1 : 0), total };
+}
+
+function drawSeqBar(){
+  const bar = $('#seqBar'); if (!bar) return;
+  if (!seq){ bar.style.display = 'none'; return; }
+  bar.style.display = 'block';
+  const n = seq.idx + 1, of = seq.stages.length;
+  const st = seq.stages[seq.idx];
+  const t = Math.round(store.unit === 'F' ? toF(st) : toC(st));
+
+  let line;
+  if (seq.phase === 'waiting')
+    line = 'Paused before stage ' + n + ' of ' + of + ' — get the food in, then tap Continue.';
+  else if (seq.phase === 'sending')
+    line = 'Starting stage ' + n + ' of ' + of + ' — ' + t + '°' + store.unit + '.';
+  else
+    line = 'Stage ' + n + ' of ' + of + ' — ' + t + '°' + store.unit +
+           '. The app sends the next one when this ends.';
+  $('#seqWhat').textContent = line;
+
+  const btns = $('#seqBtns'); btns.innerHTML = '';
+  if (seq.phase === 'waiting'){
+    const go2 = el('button','btn go'); go2.textContent = 'Continue';
+    go2.onclick = seqContinue;
+    btns.appendChild(go2);
+  }
+  const x = el('button','btn slim'); x.textContent = 'Stop sequencing';
+  x.onclick = () => { seqStop(''); toast('Sequence cancelled — the oven keeps doing whatever it is doing'); };
+  btns.appendChild(x);
 }
 
 function drawScale(cur, set, wet, u){
@@ -2121,6 +2163,119 @@ function stagePair(s, isLast, withPreheat){
 }
 const round2 = v => Math.round(v*100)/100;
 
+/* ============================================================
+   The sequencer — one stage at a time
+   The oven's own multi-stage handling is unreliable here, and its mid-plan
+   hold has never worked. So the app can instead send each stage as its own
+   single-stage cook and advance when that stage ends. Two things fall out of
+   that: transitions no longer depend on the oven, and a "wait for me" stage
+   becomes a button in this app rather than a press on the oven's panel.
+
+   It only runs while the app is open, which is why the wake lock is held for
+   the whole sequence and not just while the oven is cooking.
+   ============================================================ */
+let seq = null;        // { id, name, stages, idx, phase, cookId, lastLeft, startedAt }
+
+function seqSave(){
+  try {
+    if (seq) localStorage.setItem('anova.seq', JSON.stringify(seq));
+    else localStorage.removeItem('anova.seq');
+  } catch {}
+}
+function seqLoad(){
+  try { const v = JSON.parse(localStorage.getItem('anova.seq') || 'null'); if (v && v.stages) seq = v; }
+  catch { seq = null; }
+}
+
+function startSequence(r){
+  if (!device){ toast('Not connected to the oven'); return; }
+  const errs = validate(r);
+  if (errs.length){ fail('Not sent — ' + errs.join('  ')); return; }
+  seq = {
+    id: r.id, name: r.name || 'Recipe',
+    stages: JSON.parse(JSON.stringify(r.stages)),
+    idx: 0, phase: 'sending', cookId: null, lastLeft: null, startedAt: Date.now()
+  };
+  seqSave();
+  go('cook');
+  seqSend();
+}
+
+// One stage, sent as a complete little cook of its own.
+function seqSend(){
+  if (!seq || !device) return;
+  const st = seq.stages[seq.idx];
+  const stages = stagePair(st, true, st.mode !== 'wet');
+  const reqId = uuid(), cookId = cookUuid();
+  seq.cookId = cookId; seq.phase = 'sending'; seq.lastLeft = null; seq.startedAt = Date.now();
+  seqSave();
+
+  const ok = send({
+    command: 'CMD_APO_START', requestId: reqId,
+    payload: { id: device.id, type: 'CMD_APO_START', payload: {
+      cookId: cookId, cookerId: device.id, cookableId: '',
+      title: seq.name + ' — stage ' + (seq.idx + 1),
+      type: device.type || 'oven_v1', originSource: 'api', cookableType: 'manual',
+      stages: stages
+    } }
+  });
+  if (!ok){ seqStop('Nothing was sent — not connected.'); return; }
+  toast('Stage ' + (seq.idx + 1) + ' of ' + seq.stages.length + ' sent');
+  renderCook();
+}
+
+function seqStop(why){
+  seq = null; seqSave();
+  if (why) fail(why); 
+  renderAll();
+}
+
+function seqContinue(){
+  if (!seq || seq.phase !== 'waiting') return;
+  seqSend();
+}
+
+// Driven by each state message. The oven does not tell us a stage "finished",
+// so finishing is inferred: the cook object goes away after its timer reached
+// zero. If it goes away with time still on the clock, somebody stopped it, and
+// carrying on would be worse than stopping.
+function seqTick(){
+  if (!seq || !snap) return;
+  const cooking = !!snap.cook;
+  const tm = (snap.nodes && snap.nodes.timer) || {};
+  if (tm.mode === 'running' && tm.current != null) seq.lastLeft = tm.current;
+
+  if (seq.phase === 'sending'){
+    if (cooking){ seq.phase = 'running'; seqSave(); renderCook(); }
+    // Nothing started after 30s: the oven refused it, silently as ever.
+    else if (Date.now() - seq.startedAt > 30000){
+      seqStop('The oven never started stage ' + (seq.idx + 1) + '. Sequence stopped.');
+    }
+    return;
+  }
+
+  if (seq.phase === 'running'){
+    if (cooking) return;
+    const st = seq.stages[seq.idx];
+    const timed = st.timer > 0;
+    const ranOut = !timed || seq.lastLeft == null || seq.lastLeft <= 10;
+    if (!ranOut){
+      seqStop('Stage ' + (seq.idx + 1) + ' ended early — stopped at the oven? Sequence stopped.');
+      return;
+    }
+    if (seq.idx + 1 >= seq.stages.length){
+      const name = seq.name;
+      seq = null; seqSave(); renderAll();
+      toast(name + ' — all stages done');
+      return;
+    }
+    seq.idx++;
+    const next = seq.stages[seq.idx];
+    if (next.hold){ seq.phase = 'waiting'; seqSave(); renderCook(); toast('Waiting for you'); }
+    else seqSend();
+  }
+}
+
 function runRecipe(r){
   if (!device){ toast('Not connected to the oven'); return; }
   const errs = validate(r);
@@ -2206,12 +2361,31 @@ function confirmRun(r){
     inner.appendChild(c);
   });
 
-  const go2 = el('button','btn go'); go2.textContent = 'Start cooking';
+  const multi = r.stages.length > 1;
+  const holds = r.stages.some((s, i) => i > 0 && s.hold);
+
+  const go2 = el('button','btn go');
+  go2.textContent = multi ? 'Start — one stage at a time' : 'Start cooking';
   go2.style.marginTop = '14px';
-  go2.onclick = () => { closeSheet(); runRecipe(r); };
+  go2.onclick = () => { closeSheet(); if (multi) startSequence(r); else runRecipe(r); };
+  inner.appendChild(go2);
+
+  if (multi){
+    const hint = el('div','hint');
+    hint.textContent = holds
+      ? 'This app sends each stage as the last one ends, and pauses where the recipe says to wait — you tap Continue here rather than at the oven. Keep the app open.'
+      : 'This app sends each stage as the last one ends, rather than handing the oven the whole plan. Keep the app open.';
+    inner.appendChild(hint);
+
+    const whole = el('button','btn slim'); whole.textContent = 'Send the whole plan instead';
+    whole.style.marginTop = '10px';
+    whole.onclick = () => { closeSheet(); runRecipe(r); };
+    inner.appendChild(whole);
+  }
+
   const no = el('button','btn slim'); no.textContent = 'Not now';
   no.style.marginTop = '10px'; no.onclick = closeSheet;
-  inner.append(go2, no);
+  inner.appendChild(no);
   $('#sheet').classList.add('on');
 }
 function closeSheet(){ $('#sheet').classList.remove('on'); }
@@ -2659,6 +2833,7 @@ if (!wakeSupported()){
   document.querySelectorAll('#wakeSeg button').forEach(b => b.disabled = true);
   $('#wakeHint').textContent = 'This browser cannot hold the screen on. Install the app to your home screen, or set the screen timeout in Android settings.';
 }
+seqLoad();
 renderAll();
 if (store.token) connect(); else go('setup');
 
