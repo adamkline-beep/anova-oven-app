@@ -228,6 +228,68 @@
           "hold": false
         }
       ]
+    },
+    {
+      "name": "Sequencer dry run",
+      "servings": "Nothing. Empty oven, no steel, no pan.",
+      "source": "Test fixture",
+      "tags": [
+        "test"
+      ],
+      "usesOven": true,
+      "ingredients": "",
+      "steps": "1. Empty the oven — no steel, no pan, nothing. Close the door.\n\n2. Send this recipe and choose \"Start — one stage at a time\".\n\n3. Stage 1 runs for a minute. Watch the banner say \"Stage 1 of 3\".\n\n4. It should then pause: \"Paused before stage 2 of 3 — get the food in, then tap Continue.\" Nothing happens until you tap it. That is the part worth testing.\n\n5. Tap Continue. Stage 2 runs a minute, then stage 3 should follow on its own with no tap from you.\n\n6. After stage 3 the banner disappears and you get \"Sequencer dry run — all stages done\".",
+      "notes": "Tests the sequencer, not the baking. Three stages, one minute each, 100F with the bottom element alone in an empty oven — barely above room temperature, so the 700W element does almost nothing and the whole run costs a rounding error of electricity. About five minutes including preheats.\n\nWhat it proves:\n- a stage is sent and the oven starts it\n- the app notices the stage ended, which it has to infer since the oven never says so\n- a hold stage pauses and waits for the app's Continue, not the oven's panel\n- the next stage fires automatically when there is no hold\n- the sequence finishes and clears itself\n\nSame temperature on all three stages on purpose: nothing has to reheat between them.\n\nIf it stops early saying \"ended early — stopped at the oven?\", the end-of-stage detection is too twitchy at one-minute timers. That is useful to know and is a bug in the app, not in your oven. Tell Claude the exact wording.\n\nDelete this recipe once the sequencer is trusted.",
+      "stages": [
+        {
+          "temp": 100,
+          "unit": "F",
+          "mode": "dry",
+          "steam": "none",
+          "steamVal": 0,
+          "top": false,
+          "bottom": true,
+          "rear": false,
+          "fan": 25,
+          "vent": false,
+          "rack": 2,
+          "timer": 60,
+          "probe": 0,
+          "hold": false
+        },
+        {
+          "temp": 100,
+          "unit": "F",
+          "mode": "dry",
+          "steam": "none",
+          "steamVal": 0,
+          "top": false,
+          "bottom": true,
+          "rear": false,
+          "fan": 25,
+          "vent": false,
+          "rack": 2,
+          "timer": 60,
+          "probe": 0,
+          "hold": true
+        },
+        {
+          "temp": 100,
+          "unit": "F",
+          "mode": "dry",
+          "steam": "none",
+          "steamVal": 0,
+          "top": false,
+          "bottom": true,
+          "rear": false,
+          "fan": 25,
+          "vent": false,
+          "rack": 2,
+          "timer": 60,
+          "probe": 0,
+          "hold": false
+        }
+      ]
     }
   ]
 }
